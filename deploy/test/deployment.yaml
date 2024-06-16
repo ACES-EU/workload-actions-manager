@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test
+  labels:
+    app: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      schedulerName: wam-scheduler
+      containers:
+        - name: test
+          image: alpine
+          command: ["/bin/sh", "-c", "while true; do echo running; sleep 1; done"]

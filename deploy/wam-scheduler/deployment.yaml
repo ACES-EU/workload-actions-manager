@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wam-scheduler
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: wam-scheduler
+  template:
+    metadata:
+      labels:
+        component: scheduler
+        name: wam-scheduler
+        tier: control-plane
+    spec:
+      containers:
+        - command:
+            - /bin/kube-scheduler
+            - --leader-elect=false
+            - --config=/etc/kubernetes/scheduler-config.yaml
+          env: []
+          image: k3d-registry.localhost:50000/kube-scheduler:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10259
+              scheme: HTTPS
+          name: wam-scheduler
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10259
+              scheme: HTTPS
+          volumeMounts:
+            - mountPath: /etc/kubernetes/scheduler-config.yaml
+              name: wam-scheduler-config
+              subPath: scheduler-config.yaml
+      serviceAccountName: wam-scheduler
+      volumes:
+        - configMap:
+            name: wam-scheduler-config
+          name: wam-scheduler-config

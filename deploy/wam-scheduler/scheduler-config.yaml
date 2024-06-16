@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wam-scheduler-config
+  namespace: kube-system
+data:
+  scheduler-config.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: false
+    profiles:
+      - schedulerName: wam-scheduler
+        plugins:
+          filter:
+            enabled:
+              - name: WAM
+            disabled:
+              - name: "*"
+        pluginConfig:
+          - name: WAM
+            args:
+              test: "test"

@@ -1,6 +1,0 @@
-apiVersion: v2
-name: app
-description: Web service template in Python for reuse.
-type: application
-version: ""
-appVersion: ""

@@ -1,0 +1,15 @@
+apiVersion: k3d.io/v1alpha3
+kind: Simple
+name: aces
+servers: 1
+agents: 8
+image: rancher/k3s:v1.28.9-k3s1
+ports:
+  - port: 8080:80
+    nodeFilters:
+      - loadbalancer
+registries:
+  create:
+    name: k3d-registry.localhost
+    host: "127.0.0.1"
+    hostPort: "50000"
