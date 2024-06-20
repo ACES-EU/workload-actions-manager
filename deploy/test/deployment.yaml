@@ -5,7 +5,7 @@ metadata:
   labels:
     app: test
 spec:
-  replicas: 1
+  replicas: 0 # use action.Create WAM RPC call to create replicas
   selector:
     matchLabels:
       app: test

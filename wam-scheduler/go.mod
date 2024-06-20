@@ -13,6 +13,7 @@ require (
 	github.com/k8stopologyawareschedwg/podfingerprint v0.2.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/paypal/load-watcher v0.2.3
+	github.com/redis/go-redis/v9 v9.5.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	gonum.org/v1/gonum v0.12.0
@@ -47,6 +48,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/crossplane/crossplane-runtime v0.14.1-0.20210713194031-85b19c28ea88 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect

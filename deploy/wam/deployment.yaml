@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wam
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: wam
+  template:
+    metadata:
+      labels:
+        name: wam
+    spec:
+      containers:
+        - name: wam
+          command:
+            - /bin/wam
+          image: k3d-registry.localhost:50000/wam:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+      serviceAccountName: wam

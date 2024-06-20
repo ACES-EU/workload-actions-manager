@@ -12,6 +12,9 @@ data:
     profiles:
       - schedulerName: wam-scheduler
         plugins:
+          preFilter:
+            enabled:
+              - name: WAM
           filter:
             enabled:
               - name: WAM
