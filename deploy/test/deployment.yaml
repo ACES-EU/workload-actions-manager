@@ -17,5 +17,4 @@ spec:
       schedulerName: wam-scheduler
       containers:
         - name: test
-          image: alpine
-          command: ["/bin/sh", "-c", "while true; do echo running; sleep 1; done"]
+          image:  gcr.io/google_containers/pause:3.2

@@ -29,11 +29,24 @@ kubectl apply -f deploy/test
 kubectl port-forward wam_pod_name 3000:3000
 ```
 
-## Test Create Action
+## Examples
 
 ```bash
+# create a replica on node 7
 curl -X POST -H "Content-Type: application/json" \
   -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test"}, "node": {"name": "k3d-aces-agent-7"}}], "id":"1"}' \
+  http://localhost:3000/rpc
+  
+# create a replica on node 4
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
+  http://localhost:3000/rpc
+
+# delete a replica on node 7
+export pod_to_delete=$(kubectl get pods -l app=test -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
+echo "$pod_to_delete"
+curl -X POST -H "Content-Type: application/json" \
+  -d "{\"method\":\"action.Delete\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_delete\"}, \"node\": {\"name\": \"k3d-aces-agent-7\"}}], \"id\":\"1\"}" \
   http://localhost:3000/rpc
 ```
 

@@ -10,13 +10,6 @@ import (
 	"log"
 )
 
-type Workload struct {
-	Namespace  string `json:"namespace"`
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
-}
-
 func (w Workload) QueueName() string {
 	return fmt.Sprintf("%s:%s:%s:%s", w.Namespace, w.APIVersion, w.Kind, w.Name)
 }
@@ -136,10 +129,6 @@ func (as *ActionService) CreateHandler(args *CreateArgs) {
 	}
 
 	log.Printf("Updated new scale of %s to: %d\n", args.Workload.Name, s.Spec.Replicas)
-}
-
-type Node struct {
-	Name string `json:"name"`
 }
 
 type CreateArgs struct {

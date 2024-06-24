@@ -36,3 +36,37 @@ func (as *ActionService) Create(r *http.Request, args *CreateArgs, reply *Create
 	log.Println("Returning to the caller that the request has been accepted")
 	return nil
 }
+
+func (as *ActionService) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) error {
+	err := validateDeleteReq(args)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Delete action called")
+
+	reply.Message = "ok"
+
+	// todo: Think about a worker pool here
+	go as.DeleteHandler(args)
+	log.Println("Spawning a handler")
+
+	log.Println("Returning to the caller that the request has been accepted")
+	return nil
+}
+
+type Workload struct {
+	Namespace  string `json:"namespace"`
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Name       string `json:"name"`
+}
+
+type Pod struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
+type Node struct {
+	Name string `json:"name"`
+}
