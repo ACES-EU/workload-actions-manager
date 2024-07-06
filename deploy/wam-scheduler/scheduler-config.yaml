@@ -20,6 +20,9 @@ data:
               - name: WAM
             disabled:
               - name: "*"
+          postBind:
+            enabled:
+              - name: WAM
         pluginConfig:
           - name: WAM
             args:

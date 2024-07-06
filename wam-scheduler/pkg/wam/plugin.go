@@ -40,8 +40,9 @@ func (sg *SchedulingSuggestion) Clone() framework.StateData {
 	}
 }
 
-var _ = framework.FilterPlugin(&WAM{})
 var _ = framework.PreFilterPlugin(&WAM{})
+var _ = framework.FilterPlugin(&WAM{})
+var _ = framework.PostBindPlugin(&WAM{})
 
 // Name is the name of the plugin used in the Registry and configurations.
 const Name = "WAM"
@@ -136,6 +137,44 @@ func (w *WAM) Filter(ctx context.Context, state *framework.CycleState, pod *v1.P
 	}
 
 	return framework.NewStatus(framework.Unschedulable)
+}
+
+func (w *WAM) PostBind(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) {
+	lh := klog.FromContext(ctx)
+
+	data, err := state.Read(schedulingSuggestionKey)
+	if err != nil {
+		// todo
+		return
+	}
+	suggestion, ok := data.(*SchedulingSuggestion)
+	if !ok {
+		// todo
+		return
+	}
+
+	patch := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"annotations": map[string]string{
+				"example.com/scheduling-suggestion-id": string(suggestion.ID),
+			},
+		},
+	}
+
+	// Convert the patch to JSON
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Apply the patch
+	_, err = w.k8sClient.CoreV1().Pods(pod.Namespace).Patch(context.TODO(), pod.Name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
+	if err != nil {
+		// todo
+		return
+	}
+
+	lh.Info(fmt.Sprintf("added suggestion %+v as `example.com/scheduling-suggestion` annotation to %s", suggestion, pod.Name))
 }
 
 // New initializes a new plugin and returns it.

@@ -46,7 +46,15 @@ curl -X POST -H "Content-Type: application/json" \
 export pod_to_delete=$(kubectl get pods -l app=test -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
 echo "$pod_to_delete"
 curl -X POST -H "Content-Type: application/json" \
-  -d "{\"method\":\"action.Delete\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_delete\"}, \"node\": {\"name\": \"k3d-aces-agent-7\"}}], \"id\":\"1\"}" \
+  -d "{\"method\":\"action.Delete\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_delete\"}}], \"id\":\"1\"}" \
+  http://localhost:3000/rpc
+
+
+# move a replica from node 4 to node 1
+export pod_to_move=$(kubectl get pods -l app=test -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | head -n 1)
+echo "$pod_to_move"
+curl -X POST -H "Content-Type: application/json" \
+  -d "{\"method\":\"action.Move\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_move\"}, \"node\": {\"name\": \"k3d-aces-agent-1\"}}], \"id\":\"1\"}" \
   http://localhost:3000/rpc
 ```
 

@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: test
+      annotations:
+        test: test
     spec:
       schedulerName: wam-scheduler
       containers:

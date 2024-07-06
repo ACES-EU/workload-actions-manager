@@ -55,6 +55,24 @@ func (as *ActionService) Delete(r *http.Request, args *DeleteArgs, reply *Delete
 	return nil
 }
 
+func (as *ActionService) Move(r *http.Request, args *MoveArgs, reply *MoveReply) error {
+	err := validateMoveReq(args)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Move action called")
+
+	reply.Message = "ok"
+
+	// todo: Think about a worker pool here
+	go as.MoveHandler(args)
+	log.Println("Spawning a handler")
+
+	log.Println("Returning to the caller that the request has been accepted")
+	return nil
+}
+
 type Workload struct {
 	Namespace  string `json:"namespace"`
 	APIVersion string `json:"apiVersion"`

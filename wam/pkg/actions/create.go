@@ -79,7 +79,7 @@ func (as *ActionService) removeSchedulingSuggestion(queue string, sug *Schedulin
 	return nil
 }
 
-func (as *ActionService) CreateHandler(args *CreateArgs) {
+func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion, error) {
 	queue := args.Workload.QueueName()
 
 	log.Printf("Using queue %s\n", queue)
@@ -87,6 +87,7 @@ func (as *ActionService) CreateHandler(args *CreateArgs) {
 	suggestion, err := as.addSchedulingSuggestion(queue, args.Node.Name)
 	if err != nil {
 		log.Println(err)
+		return nil, err
 	}
 
 	// send WAM scheduling suggestion to the queue
@@ -106,7 +107,7 @@ func (as *ActionService) CreateHandler(args *CreateArgs) {
 			log.Println(err)
 		}
 
-		return
+		return nil, err
 	}
 
 	log.Printf("Got current scale for %s: %d\n", args.Workload.Name, scale.Spec.Replicas)
@@ -125,10 +126,12 @@ func (as *ActionService) CreateHandler(args *CreateArgs) {
 			log.Println(err)
 		}
 
-		return
+		return nil, err
 	}
 
 	log.Printf("Updated new scale of %s to: %d\n", args.Workload.Name, s.Spec.Replicas)
+
+	return suggestion, nil
 }
 
 type CreateArgs struct {
