@@ -13,6 +13,7 @@ type ActionService struct {
 }
 
 func NewActionService(k8sClient *clientset.Clientset, rdb *redis.Client) *ActionService {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	return &ActionService{
 		k8sClient,
 		rdb,
@@ -73,18 +74,22 @@ func (as *ActionService) Move(r *http.Request, args *MoveArgs, reply *MoveReply)
 	return nil
 }
 
-type Workload struct {
-	Namespace  string `json:"namespace"`
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
-}
+func (as *ActionService) Swap(r *http.Request, args *SwapArgs, reply *SwapReply) error {
+	err := validateSwapReq(args)
+	if err != nil {
+		return err
+	}
 
-type Pod struct {
-	Namespace string `json:"namespace"`
-	Name      string `json:"name"`
-}
+	log.Println("Swap action called")
 
-type Node struct {
-	Name string `json:"name"`
+	reply.Message = "ok"
+
+	// todo: Think about a worker pool here
+	// ensure that no other actions related to the workloads accessed by the swap action run in parallel
+	// since they might affect the wait part of the action or even prevent the action to succeed
+	go as.SwapHandler(args)
+	log.Println("Spawning a handler")
+
+	log.Println("Returning to the caller that the request has been accepted")
+	return nil
 }

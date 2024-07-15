@@ -8,16 +8,16 @@
 - [Just](https://github.com/casey/just?tab=readme-ov-file#installation)
 - [Helm](https://helm.sh/docs/intro/install/)
 
-## Build
-
-todo
-
 ## Create a Cluster
 
 ```bash
 grep k3d-registry.localhost /etc/hosts || echo "127.0.0.1 k3d-registry.localhost" | sudo tee -a /etc/hosts
 k3d cluster create --config deploy/k3d.yaml --api-port localhost:5443
 ```
+
+## Build
+
+todo
 
 ## Deploy
 
@@ -32,30 +32,45 @@ kubectl port-forward wam_pod_name 3000:3000
 ## Examples
 
 ```bash
-# create a replica on node 7
+# create a replica of A on node 7
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test"}, "node": {"name": "k3d-aces-agent-7"}}], "id":"1"}' \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-7"}}], "id":"1"}' \
   http://localhost:3000/rpc
   
-# create a replica on node 4
+# create a replica of A on node 4
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
   http://localhost:3000/rpc
 
-# delete a replica on node 7
-export pod_to_delete=$(kubectl get pods -l app=test -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
+# delete a replica of A on node 7
+export pod_to_delete=$(kubectl get pods -l app=test-a -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
 echo "$pod_to_delete"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Delete\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_delete\"}}], \"id\":\"1\"}" \
   http://localhost:3000/rpc
 
-
-# move a replica from node 4 to node 1
-export pod_to_move=$(kubectl get pods -l app=test -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | head -n 1)
+# move a replica of A from node 4 to node 7
+export pod_to_move=$(kubectl get pods -l app=test-a -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | head -n 1)
 echo "$pod_to_move"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Move\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_move\"}, \"node\": {\"name\": \"k3d-aces-agent-1\"}}], \"id\":\"1\"}" \
   http://localhost:3000/rpc
+  
+# create a replica of B on node 4
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-b"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
+  http://localhost:3000/rpc
+
+# create another replica of B on node 4
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-b"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
+  http://localhost:3000/rpc
+
+# swap replica of A (node 7) with replicas of B (node 4)
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"method":"action.Swap","params":[{"x": {"namespace": "default", "name": "test-a-pod-id"}, "y": [{"namespace": "default", "name": "test-b-pod-1-id"}, {"namespace": "default", "name": "test-b-pod-2-id"}]}], "id":"1"}' \
+  http://localhost:3000/rpc
+
 ```
 
 ## Clean up

@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: test
+  name: test-a
   labels:
-    app: test
+    app: test-a
 spec:
   replicas: 0 # use action.Create WAM RPC call to create replicas
   selector:
     matchLabels:
-      app: test
+      app: test-a
   template:
     metadata:
       labels:
-        app: test
+        app: test-a
       annotations:
-        test: test
+        test: test-a
     spec:
       schedulerName: wam-scheduler
       containers:

@@ -17,33 +17,17 @@ func (ma *MoveArgs) toCreateArgs(k8sClient *clientset.Clientset) (*CreateArgs, e
 		return nil, err
 	}
 
-	var deploymentAPIVersion string
-	var deploymentKind string
-	var deploymentName string
-
-	for _, owner := range pod.OwnerReferences {
-		if owner.Kind == "ReplicaSet" {
-			rs, err := k8sClient.AppsV1().ReplicaSets(ma.Pod.Namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			for _, owner := range rs.OwnerReferences {
-				if owner.Kind == "Deployment" {
-					deploymentAPIVersion = owner.APIVersion
-					deploymentKind = owner.Kind
-					deploymentName = owner.Name
-					break
-				}
-			}
-		}
+	deployment, err := getPodsDeployment(pod, k8sClient)
+	if err != nil {
+		return nil, err
 	}
 
 	return &CreateArgs{
 		Workload: Workload{
 			Namespace:  ma.Pod.Namespace,
-			APIVersion: deploymentAPIVersion,
-			Kind:       deploymentKind,
-			Name:       deploymentName,
+			APIVersion: deployment.APIVersion,
+			Kind:       deployment.Kind,
+			Name:       deployment.Name,
 		},
 		Node: ma.Node,
 	}, nil

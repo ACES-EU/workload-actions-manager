@@ -26,24 +26,8 @@ func (as *ActionService) DeleteHandler(args *DeleteArgs) {
 		return
 	}
 
-	var deploymentName string
-	for _, owner := range pod.OwnerReferences {
-		if owner.Kind == "ReplicaSet" {
-			rs, err := as.k8sClient.AppsV1().ReplicaSets(args.Pod.Namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
-			if err != nil {
-				fmt.Printf("Error getting replicaset: %v\n", err)
-				return
-			}
-			for _, owner := range rs.OwnerReferences {
-				if owner.Kind == "Deployment" {
-					deploymentName = owner.Name
-					break
-				}
-			}
-		}
-	}
-
-	if deploymentName == "" {
+	deployment, err := getPodsDeployment(pod, as.k8sClient)
+	if err != nil {
 		fmt.Println("Error getting pod's deployment")
 		return
 	}
@@ -63,20 +47,20 @@ func (as *ActionService) DeleteHandler(args *DeleteArgs) {
 	// todo: race conditions here, think about a distributed lock
 	scale, err := as.k8sClient.AppsV1().
 		Deployments(args.Pod.Namespace).
-		GetScale(context.TODO(), deploymentName, metav1.GetOptions{})
+		GetScale(context.TODO(), deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	log.Printf("Got current scale for %s: %d\n", deploymentName, scale.Spec.Replicas)
+	log.Printf("Got current scale for %s: %d\n", deployment.Name, scale.Spec.Replicas)
 
 	s := *scale
 	s.Spec.Replicas -= 1
 
 	_, err = as.k8sClient.AppsV1().
 		Deployments(args.Pod.Namespace).UpdateScale(context.TODO(),
-		deploymentName, &s, metav1.UpdateOptions{})
+		deployment.Name, &s, metav1.UpdateOptions{})
 	if err != nil {
 		log.Println(err)
 		return
