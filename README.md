@@ -1,5 +1,7 @@
 # Workload Actions Manager (WAM)
 
+[![GPLv3 License](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 ## Requirements
 
 - [Docker](https://docs.docker.com/get-docker/)
@@ -86,3 +88,9 @@ k3d cluster stop aces && k3d cluster delete aces
 - https://scheduler-plugins.sigs.k8s.io/docs/user-guide/installation/
 - https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/
 - https://medium.com/@juliorenner123/k8s-creating-a-kube-scheduler-plugin-8a826c486a1
+
+## License
+
+This project is licensed under the terms of the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for details.
+
+© 2024 Faculty of Computer and Information Science, University of Ljubljana
