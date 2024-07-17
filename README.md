@@ -1,6 +1,10 @@
 # Workload Actions Manager (WAM)
 
 [![GPLv3 License](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Test & Build](https://github.com/ACES-EU/workload-actions-manager/actions/workflows/test_and_build.yaml/badge.svg?event=push)](https://github.com/ACES-EU/workload-actions-manager/actions/workflows/test_and_build.yaml)
+
+TODO description
+architecture
 
 ## Requirements
 
@@ -19,7 +23,7 @@ k3d cluster create --config deploy/k3d.yaml --api-port localhost:5443
 
 ## Build
 
-todo
+TODO
 
 ## Deploy
 
@@ -81,7 +85,7 @@ curl -X POST -H "Content-Type: application/json" \
 k3d cluster stop aces && k3d cluster delete aces
 ```
 
-## To Read
+## Resources
 
 - https://www.awelm.com/posts/kube-scheduler/
 - https://cast.ai/blog/custom-kube-scheduler-why-and-how-to-set-it-up-in-kubernetes/
