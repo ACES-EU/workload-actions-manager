@@ -9,7 +9,7 @@ import (
 
 func validateDeleteReq(args *DeleteArgs) error {
 	if args.Pod.Namespace == "" {
-		return fmt.Errorf("pod's namespace must be specified")
+		args.Pod.Namespace = "default"
 	}
 
 	if args.Pod.Name == "" {
@@ -22,13 +22,13 @@ func validateDeleteReq(args *DeleteArgs) error {
 func (as *ActionService) DeleteHandler(args *DeleteArgs) {
 	pod, err := as.k8sClient.CoreV1().Pods(args.Pod.Namespace).Get(context.TODO(), args.Pod.Name, metav1.GetOptions{})
 	if err != nil {
-		fmt.Printf("Error getting pod: %v\n", err)
+		log.Printf("error getting pod: %v\n", err)
 		return
 	}
 
 	deployment, err := getPodsDeployment(pod, as.k8sClient)
 	if err != nil {
-		fmt.Println("Error getting pod's deployment")
+		log.Printf("error getting %s's deployment\n", pod.Name)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (as *ActionService) DeleteHandler(args *DeleteArgs) {
 		return
 	}
 
-	log.Printf("Got current scale for %s: %d\n", deployment.Name, scale.Spec.Replicas)
+	log.Printf("got current scale for %s: %d\n", deployment.Name, scale.Spec.Replicas)
 
 	s := *scale
 	s.Spec.Replicas -= 1
@@ -66,8 +66,11 @@ func (as *ActionService) DeleteHandler(args *DeleteArgs) {
 		return
 	}
 
-	fmt.Printf("Pod %s will be preferentially deleted\n", args.Pod.Name)
-	fmt.Println("Delete action successful")
+	log.Printf("updated new scale of %s to: %d\n", deployment.Name, s.Spec.Replicas)
+
+	log.Printf("pod %s will be preferentially deleted\n", args.Pod.Name)
+
+	log.Println("delete action successful")
 }
 
 type DeleteArgs struct {

@@ -26,15 +26,15 @@ func (as *ActionService) Create(r *http.Request, args *CreateArgs, reply *Create
 		return err
 	}
 
-	log.Println("Creation action called")
+	log.Println("create action called")
 
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
 	go as.CreateHandler(args)
-	log.Println("Spawning a handler")
+	log.Println("spawning a handler")
 
-	log.Println("Returning to the caller that the request has been accepted")
+	log.Println("returning to the caller that the request has been accepted")
 	return nil
 }
 
@@ -44,15 +44,15 @@ func (as *ActionService) Delete(r *http.Request, args *DeleteArgs, reply *Delete
 		return err
 	}
 
-	log.Println("Delete action called")
+	log.Println("delete action called")
 
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
 	go as.DeleteHandler(args)
-	log.Println("Spawning a handler")
+	log.Println("spawning a handler")
 
-	log.Println("Returning to the caller that the request has been accepted")
+	log.Println("returning to the caller that the request has been accepted")
 	return nil
 }
 
@@ -62,15 +62,15 @@ func (as *ActionService) Move(r *http.Request, args *MoveArgs, reply *MoveReply)
 		return err
 	}
 
-	log.Println("Move action called")
+	log.Println("move action called")
 
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
 	go as.MoveHandler(args)
-	log.Println("Spawning a handler")
+	log.Println("spawning a handler")
 
-	log.Println("Returning to the caller that the request has been accepted")
+	log.Println("returning to the caller that the request has been accepted")
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (as *ActionService) Swap(r *http.Request, args *SwapArgs, reply *SwapReply)
 		return err
 	}
 
-	log.Println("Swap action called")
+	log.Println("swap action called")
 
 	reply.Message = "ok"
 
@@ -88,8 +88,8 @@ func (as *ActionService) Swap(r *http.Request, args *SwapArgs, reply *SwapReply)
 	// ensure that no other actions related to the workloads accessed by the swap action run in parallel
 	// since they might affect the wait part of the action or even prevent the action to succeed
 	go as.SwapHandler(args)
-	log.Println("Spawning a handler")
+	log.Println("spawning a handler")
 
-	log.Println("Returning to the caller that the request has been accepted")
+	log.Println("returning to the caller that the request has been accepted")
 	return nil
 }

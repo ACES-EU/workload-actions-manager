@@ -17,6 +17,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"log"
+	"os"
 	"path/filepath"
 	apiconfig "sigs.k8s.io/scheduler-plugins/apis/config"
 	"sigs.k8s.io/scheduler-plugins/apis/config/validation"
@@ -80,20 +81,20 @@ func (w *WAM) PreFilter(ctx context.Context, state *framework.CycleState, pod *v
 
 	deployment, err := w.getDeploymentName(pod)
 	if err != nil {
-		lh.Error(err, "Pod's deployment not found")
+		lh.V(3).Error(err, "pod's deployment not found")
 		return nil, nil
 	}
 
-	lh.Info(fmt.Sprintf("Found pod's deployment %+v", deployment))
+	lh.V(5).Info(fmt.Sprintf("found pod's deployment %+v", deployment))
 
 	queue := queueName(deployment, pod.Namespace)
 
 	sugEncoded, err := w.rdb.LPop(context.TODO(), queue).Result()
 	if errors.Is(err, redis.Nil) {
-		lh.Info("no suggestion found: scheduling without a scheduling suggestion")
+		lh.V(3).Info(fmt.Sprintf("no suggestion found for %s: scheduling without a scheduling suggestion", pod.Name))
 		return nil, framework.NewStatus(framework.Success, "")
 	} else if err != nil {
-		lh.Error(err, "")
+		lh.Error(err, "error connecting to Redis")
 		return nil, framework.NewStatus(framework.Error, "")
 	}
 
@@ -109,7 +110,7 @@ func (w *WAM) PreFilter(ctx context.Context, state *framework.CycleState, pod *v
 		NodeName: suggestion.NodeName,
 	})
 
-	lh.Info(fmt.Sprintf("adding suggestion %+v to cycle state", suggestion))
+	lh.V(5).Info(fmt.Sprintf("adding suggestion %+v to cycle state", suggestion))
 
 	return nil, framework.NewStatus(framework.Success, "")
 }
@@ -130,7 +131,7 @@ func (w *WAM) Filter(ctx context.Context, state *framework.CycleState, pod *v1.P
 		// todo
 	}
 
-	lh.Info(fmt.Sprintf("using suggestion %+v", suggestion))
+	lh.V(5).Info(fmt.Sprintf("using suggestion %+v", suggestion))
 
 	if nodeInfo.Node().Name == suggestion.NodeName {
 		return framework.NewStatus(framework.Success, fmt.Sprintf("found suggested node %s", suggestion.NodeName))
@@ -174,34 +175,42 @@ func (w *WAM) PostBind(ctx context.Context, state *framework.CycleState, pod *v1
 		return
 	}
 
-	lh.Info(fmt.Sprintf("added suggestion %+v as `example.com/scheduling-suggestion` annotation to %s", suggestion, pod.Name))
+	lh.V(5).Info(fmt.Sprintf("added suggestion %+v as `example.com/scheduling-suggestion` annotation to %s", suggestion, pod.Name))
 }
 
 // New initializes a new plugin and returns it.
 func New(ctx context.Context, args runtime.Object, h framework.Handle) (framework.Plugin, error) {
 	lh := klog.FromContext(ctx)
 
-	kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	kubeConfig, err := clientcmd.BuildConfigFromFlags("", filepath.Join(homedir.HomeDir(), ".kube", "config"))
 	if err != nil {
-		config, err = rest.InClusterConfig()
+		kubeConfig, err = rest.InClusterConfig()
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	k8sClient, err := kubernetes.NewForConfig(config)
+	k8sClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	redisHost := os.Getenv("WAM_REDIS_HOST")
+	redisPort := os.Getenv("WAM_REDIS_PORT")
+	redisPassword := os.Getenv("WAM_REDIS_PASSWORD")
+	lh.V(5).Info(fmt.Sprintf("connecting to Redis on %s:%s", redisHost, redisPort))
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "wam-redis-master.default.svc.cluster.local:6379",
-		Password: "redis_test_password",
+		Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
+		Password: redisPassword,
 		DB:       0,
 	})
 
-	lh.V(5).Info("creating new WAM plugin")
+	_, err = rdb.Ping(ctx).Result()
+	if err != nil {
+		log.Fatal("error connecting to Redis")
+	}
+
+	lh.V(5).Info("creating a new WAM plugin")
 	wamArgs, ok := args.(*apiconfig.WAMArgs)
 	if !ok {
 		return nil, fmt.Errorf("want args to be of type WAMArgs, got %T", args)

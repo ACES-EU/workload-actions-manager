@@ -62,7 +62,7 @@ func (as *ActionService) SwapHandler(args *SwapArgs) {
 	for i, pod := range pods {
 		podObj, err := as.k8sClient.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
 		if err != nil {
-			fmt.Printf("error getting pod: %v\n", err)
+			log.Printf("error getting pod: %v\n", err)
 			return
 		}
 
@@ -73,25 +73,25 @@ func (as *ActionService) SwapHandler(args *SwapArgs) {
 			nodeY = nodeName
 		} else if nodeY != nodeName {
 			// verify all Y pod nodes are the same
-			fmt.Printf("aborting move: all Y pods must be running on the same node: %s != %s\n", nodeY, nodeName)
+			log.Printf("aborting move: all Y pods must be running on the same node: %s != %s\n", nodeY, nodeName)
 			return
 		}
 
 		deployment, err := getPodsDeployment(podObj, as.k8sClient)
 		if err != nil {
-			fmt.Printf("error getting pod's owner reference: %v\n", err)
+			log.Printf("error getting pod's owner reference: %v\n", err)
 			return
 		}
 
 		deploymentObj, _ := as.k8sClient.AppsV1().Deployments(pod.Namespace).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
 		if err != nil {
-			fmt.Printf("error getting pod's deployment: %v\n", err)
+			log.Printf("error getting pod's deployment: %v\n", err)
 			return
 		}
 
 		scale := deploymentObj.Status.Replicas
 		if err != nil {
-			fmt.Printf("error getting pod's deployment current scale: %v\n", err)
+			log.Printf("error getting pod's deployment current scale: %v\n", err)
 			return
 		}
 
@@ -142,7 +142,7 @@ func (as *ActionService) SwapHandler(args *SwapArgs) {
 	for len(targetScales) > 0 {
 		select {
 		case <-timer.C:
-			fmt.Println("waiting for deletes exceeded timeout")
+			log.Println("waiting for deletes exceeded timeout")
 			return
 		default:
 			log.Printf("waiting for deletes: %d left\n", len(targetScales))
@@ -185,6 +185,8 @@ func (as *ActionService) SwapHandler(args *SwapArgs) {
 	for _, createArg := range createArgs {
 		_, _ = as.CreateHandler(createArg)
 	}
+
+	log.Println("swap action successful")
 }
 
 type SwapArgs struct {
@@ -198,16 +200,17 @@ type SwapReply struct {
 
 func validateSwapReq(args *SwapArgs) error {
 	if args.X.Namespace == "" {
-		return fmt.Errorf("x pod's namespace must be specified")
+		args.X.Namespace = "default"
 	}
 
 	if args.X.Name == "" {
 		return fmt.Errorf("x pod's name must be specified")
 	}
 
-	for i, pod := range args.Y {
+	for i := range args.Y {
+		pod := args.Y[i]
 		if pod.Namespace == "" {
-			return fmt.Errorf("y pod's, at index %d, namespace must be specified", i)
+			pod.Namespace = "default"
 		}
 
 		if pod.Name == "" {

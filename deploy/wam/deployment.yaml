@@ -20,5 +20,14 @@ spec:
           image: k3d-registry.localhost:50000/wam:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 3000
+            - containerPort: 3030
+          env:
+            - name: REDIS_HOST
+              value: "wam-redis-master.default.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_PASSWORD
+              value: "redis_test_password" # todo: use secret
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0:3030"
       serviceAccountName: wam

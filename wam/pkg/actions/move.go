@@ -93,12 +93,12 @@ func isPodReady(pod *corev1.Pod) bool {
 func (as *ActionService) MoveHandler(args *MoveArgs) {
 	createArgs, err := args.toCreateArgs(as.k8sClient)
 	if err != nil {
-		fmt.Printf("%s: move action failed at determining the workload of %s", err.Error(), args.Pod.Name)
+		log.Printf("%s: move action failed at determining the workload of %s\n", err.Error(), args.Pod.Name)
 	}
 
 	schedulingSuggestion, err := as.CreateHandler(createArgs)
 	if err != nil {
-		fmt.Printf("move action failed at create step: %s\n", err.Error())
+		log.Printf("move action failed at create step: %s\n", err.Error())
 	}
 
 	log.Printf("waiting for pod of workload %s on node %s to become ready\n", createArgs.Workload.Name, createArgs.Node.Name)
@@ -106,12 +106,14 @@ func (as *ActionService) MoveHandler(args *MoveArgs) {
 	// todo: this can takes a while, so consider a better architecture than keeping a goroutine alive for so long
 	err = as.waitToBeReady(args.Pod.Namespace, schedulingSuggestion, 5*time.Minute)
 	if err != nil {
-		fmt.Printf("move action failed at wait step: %s\n", err.Error())
+		log.Printf("move action failed at wait step: %s\n", err.Error())
 	}
 
 	log.Printf("done waiting, proceeding with delete\n")
 
 	as.DeleteHandler(args.toDeleteArgs())
+
+	log.Println("move action successful")
 }
 
 type MoveArgs struct {
@@ -125,7 +127,7 @@ type MoveReply struct {
 
 func validateMoveReq(args *MoveArgs) error {
 	if args.Pod.Namespace == "" {
-		return fmt.Errorf("pod's namespace must be specified")
+		args.Pod.Namespace = "default"
 	}
 
 	if args.Pod.Name == "" {

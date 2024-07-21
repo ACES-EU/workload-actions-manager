@@ -21,8 +21,14 @@ spec:
             - --leader-elect=false
             - --config=/etc/kubernetes/scheduler-config.yaml
             - --v
-            - "10"
-          env: []
+            - "5"
+          env:
+            - name: WAM_REDIS_HOST
+              value: "wam-redis-master.default.svc.cluster.local"
+            - name: WAM_REDIS_PORT
+              value: "6379"
+            - name: WAM_REDIS_PASSWORD
+              value: "redis_test_password" # todo: use secret
           image: k3d-registry.localhost:50000/wam-scheduler:latest
           imagePullPolicy: Always
           resources:

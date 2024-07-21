@@ -44,7 +44,7 @@ func (as *ActionService) addSchedulingSuggestion(queue string, nodeName string) 
 		NodeName: nodeName,
 	}
 
-	log.Printf("Created scheduling suggestion %+v\n", sug)
+	log.Printf("created scheduling suggestion %+v\n", sug)
 
 	sugEncoded, err := json.Marshal(sug)
 	if err != nil {
@@ -56,13 +56,13 @@ func (as *ActionService) addSchedulingSuggestion(queue string, nodeName string) 
 		return sug, err
 	}
 
-	log.Printf("Pushed suggestion to the queue %s\n", queue)
+	log.Printf("pushed suggestion to the queue %s\n", queue)
 
 	return sug, nil
 }
 
 func (as *ActionService) removeSchedulingSuggestion(queue string, sug *SchedulingSuggestion) error {
-	log.Printf("Removing suggestion %+v\n", sug)
+	log.Printf("removing suggestion %+v\n", sug)
 
 	sugEncoded, err := json.Marshal(sug)
 	if err != nil {
@@ -74,7 +74,7 @@ func (as *ActionService) removeSchedulingSuggestion(queue string, sug *Schedulin
 		return err
 	}
 
-	log.Println("Suggestion removed")
+	log.Println("suggestion removed")
 
 	return nil
 }
@@ -82,7 +82,7 @@ func (as *ActionService) removeSchedulingSuggestion(queue string, sug *Schedulin
 func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion, error) {
 	queue := args.Workload.QueueName()
 
-	log.Printf("Using queue %s\n", queue)
+	log.Printf("using queue %s\n", queue)
 
 	suggestion, err := as.addSchedulingSuggestion(queue, args.Node.Name)
 	if err != nil {
@@ -110,7 +110,7 @@ func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion,
 		return nil, err
 	}
 
-	log.Printf("Got current scale for %s: %d\n", args.Workload.Name, scale.Spec.Replicas)
+	log.Printf("got current scale for %s: %d\n", args.Workload.Name, scale.Spec.Replicas)
 
 	s := *scale
 	s.Spec.Replicas += 1
@@ -129,7 +129,9 @@ func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion,
 		return nil, err
 	}
 
-	log.Printf("Updated new scale of %s to: %d\n", args.Workload.Name, s.Spec.Replicas)
+	log.Printf("updated new scale of %s to: %d\n", args.Workload.Name, s.Spec.Replicas)
+
+	log.Println("create action successful")
 
 	return suggestion, nil
 }
