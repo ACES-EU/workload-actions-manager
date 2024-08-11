@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wam.fullname" . }}
+  labels:
+    {{- include "wam.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "wam.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "wam.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "wam.fullname" . }}
+      containers:
+        - name: wam
+          command:
+            - /bin/wam
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 3030
+          env:
+            - name: REDIS_HOST
+              value: "{{ .Values.redis.host }}"
+            - name: REDIS_PORT
+              value: "{{ .Values.redis.port }}"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wam.fullname" . }}
+                  key: REDIS_PASSWORD
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0:{{ .Values.listenPort }}"
+

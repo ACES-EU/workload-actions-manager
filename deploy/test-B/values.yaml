@@ -1,0 +1,9 @@
+replicas: 0 # scaling up and down should be performed by WAM
+
+image:
+  repository: gcr.io/google_containers/pause
+  pullPolicy: IfNotPresent
+  tag: "3.2"
+
+nameOverride: ""
+fullnameOverride: ""

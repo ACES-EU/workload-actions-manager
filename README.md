@@ -60,11 +60,12 @@ just build_and_push
 ## Deploy
 
 ```bash
-helm install wam-redis deploy/redis
+helm install --namespace default wam-redis deploy/redis
 sleep 30 # wait for Redis to start
-kubectl apply -f deploy/wam-scheduler
-kubectl apply -f deploy/wam
-kubectl apply -f deploy/test
+helm install --namespace kube-system wam-scheduler deploy/wam-scheduler
+helm install --namespace default wam deploy/wam
+helm install --namespace default test-a deploy/test-a
+helm install --namespace default test-b deploy/test-b
 kubectl port-forward <wam_pod_name> 3030:3030
 ```
 
@@ -82,14 +83,14 @@ curl -X POST -H "Content-Type: application/json" \
   http://localhost:3030/rpc
 
 # delete a replica of A on node 7
-export pod_to_delete=$(kubectl get pods -l app=test-a -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
+export pod_to_delete=$(kubectl get pods -l 'app.kubernetes.io/name=test-a' -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
 echo "$pod_to_delete"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Delete\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_delete\"}}], \"id\":\"1\"}" \
   http://localhost:3030/rpc
 
 # move a replica of A from node 4 to node 7
-export pod_to_move=$(kubectl get pods -l app=test-a -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | head -n 1)
+export pod_to_move=$(kubectl get pods -l 'app.kubernetes.io/name=test-a' -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | head -n 1)
 echo "$pod_to_move"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Move\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_move\"}, \"node\": {\"name\": \"k3d-aces-agent-7\"}}], \"id\":\"1\"}" \
@@ -106,9 +107,9 @@ curl -X POST -H "Content-Type: application/json" \
   http://localhost:3030/rpc
 
 # swap replica of A (node 7) with replicas of B (node 4)
-export pod_to_swap_A=$(kubectl get pods -l app=test-a -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
-export pod_to_swap_B_1=$(kubectl get pods -l app=test-b -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | sort | head -n 1)
-export pod_to_swap_B_2=$(kubectl get pods -l app=test-b -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | sort | tail -n 1)
+export pod_to_swap_A=$(kubectl get pods -l 'app.kubernetes.io/name=test-a' -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
+export pod_to_swap_B_1=$(kubectl get pods -l 'app.kubernetes.io/name=test-b' -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | sort | head -n 1)
+export pod_to_swap_B_2=$(kubectl get pods -l 'app.kubernetes.io/name=test-b' -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | sort | tail -n 1)
 echo "$pod_to_swap_A"
 echo "$pod_to_swap_B_1"
 echo "$pod_to_swap_B_2"

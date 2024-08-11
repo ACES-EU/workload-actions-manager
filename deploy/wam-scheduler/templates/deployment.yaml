@@ -1,22 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wam-scheduler
-  namespace: kube-system
+  name: {{ include "wam-scheduler.fullname" . }}
+  labels:
+    {{- include "wam-scheduler.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      name: wam-scheduler
+      {{- include "wam-scheduler.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        component: scheduler
-        name: wam-scheduler
-        tier: control-plane
+        {{- include "wam-scheduler.labels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "wam-scheduler.fullname" . }}
       containers:
-        - command:
+        - name: scheduler
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
             - /bin/kube-scheduler
             - --leader-elect=false
             - --config=/etc/kubernetes/scheduler-config.yaml
@@ -24,13 +27,14 @@ spec:
             - "5"
           env:
             - name: WAM_REDIS_HOST
-              value: "wam-redis-master.default.svc.cluster.local"
+              value: "{{ .Values.redis.host }}"
             - name: WAM_REDIS_PORT
-              value: "6379"
+              value: "{{ .Values.redis.port }}"
             - name: WAM_REDIS_PASSWORD
-              value: "redis_test_password" # todo: use secret
-          image: k3d-registry.localhost:50000/wam-scheduler:latest
-          imagePullPolicy: Always
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wam-scheduler.fullname" . }}
+                  key: WAM_REDIS_PASSWORD
           resources:
             requests:
               cpu: 200m
@@ -42,7 +46,6 @@ spec:
               path: /healthz
               port: 10259
               scheme: HTTPS
-          name: wam-scheduler
           readinessProbe:
             httpGet:
               path: /healthz
@@ -50,10 +53,9 @@ spec:
               scheme: HTTPS
           volumeMounts:
             - mountPath: /etc/kubernetes/scheduler-config.yaml
-              name: wam-scheduler-config
+              name: config
               subPath: scheduler-config.yaml
-      serviceAccountName: wam-scheduler
       volumes:
         - configMap:
-            name: wam-scheduler-config
-          name: wam-scheduler-config
+            name: {{ include "wam-scheduler.fullname" . }}-config
+          name: config
