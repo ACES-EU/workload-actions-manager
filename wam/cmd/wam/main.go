@@ -49,9 +49,15 @@ func main() {
 
 	s := rpc.NewServer()
 	s.RegisterCodec(jsoncodec.NewCodec(), "application/json")
-	s.RegisterService(actions.NewActionService(k8sClient, rdb), "action")
+	err = s.RegisterService(actions.NewActionService(k8sClient, rdb), "action")
+	if err != nil {
+		panic(err)
+	}
 	http.Handle("/rpc", s)
 
 	log.Printf("Listening on %s...\n", config.Server.Address)
-	http.ListenAndServe(config.Server.Address, nil)
+	err = http.ListenAndServe(config.Server.Address, nil)
+	if err != nil {
+		panic(err)
+	}
 }
