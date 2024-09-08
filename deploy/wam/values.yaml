@@ -14,4 +14,3 @@ redis:
   host: "wam-redis-master.default.svc.cluster.local"
   port: "6379"
   password: "redis_test_password"
-
