@@ -1,7 +1,7 @@
 # Workload Actions Manager (WAM)
 
 [![GPLv3 License](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Test & Build](https://github.com/ACES-EU/workload-actions-manager/actions/workflows/test_and_build.yaml/badge.svg?event=push)](https://github.com/ACES-EU/workload-actions-manager/actions/workflows/test_and_build.yaml)
+[![Test & Build](https://github.com/ACES-EU/workload-actions-manager/actions/workflows/test_and_build.yaml/badge.svg?event=push)](https://github.com/ACES-EU/workload-actions-manager/actions/workflows/lint_and_test.yaml)
 
 ![architecture](docs/architecture.png)
 
