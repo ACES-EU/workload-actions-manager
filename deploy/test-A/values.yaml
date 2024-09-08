@@ -1,4 +1,5 @@
-replicas: 0 # scaling up and down should be performed by WAM
+# scaling up and down should be performed by WAM
+replicas: 0
 
 image:
   repository: gcr.io/google_containers/pause
