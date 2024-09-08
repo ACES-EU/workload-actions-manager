@@ -29,3 +29,20 @@ jobs:
 
       - name: Run chart-testing (lint)
         run: ct lint --all --debug --chart-dirs=deploy --validate-maintainers=false
+
+  go-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        folder:
+          - wam
+        # - wam-scheduler # todo: linting makes sense only for the code that was added on top of scheduler-plugins
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60.3
+          working-directory: ${{ matrix.folder }}

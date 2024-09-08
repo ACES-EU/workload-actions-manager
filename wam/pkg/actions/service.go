@@ -31,7 +31,9 @@ func (as *ActionService) Create(r *http.Request, args *CreateArgs, reply *Create
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
-	go as.CreateHandler(args)
+	go func() {
+		_, _ = as.CreateHandler(args)
+	}()
 	log.Println("spawning a handler")
 
 	log.Println("returning to the caller that the request has been accepted")
