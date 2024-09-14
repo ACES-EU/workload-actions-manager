@@ -19,8 +19,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	apiconfig "sigs.k8s.io/scheduler-plugins/apis/config"
-	"sigs.k8s.io/scheduler-plugins/apis/config/validation"
 )
 
 type WAM struct {
@@ -127,8 +125,9 @@ func (w *WAM) Filter(ctx context.Context, state *framework.CycleState, pod *v1.P
 		return nil
 	}
 	suggestion, ok := data.(*SchedulingSuggestion)
-	if !ok {
-		// todo
+	if !ok || suggestion == nil {
+		// no suggestion has been found, fallback to the rest of the plugins' filters
+		return framework.NewStatus(framework.Success)
 	}
 
 	lh.V(5).Info(fmt.Sprintf("using suggestion %+v", suggestion))
@@ -211,14 +210,6 @@ func New(ctx context.Context, args runtime.Object, h framework.Handle) (framewor
 	}
 
 	lh.V(5).Info("creating a new WAM plugin")
-	wamArgs, ok := args.(*apiconfig.WAMArgs)
-	if !ok {
-		return nil, fmt.Errorf("want args to be of type WAMArgs, got %T", args)
-	}
-
-	if err := validation.ValidateWAMPluginArgs(wamArgs); err != nil {
-		return nil, err
-	}
 
 	return &WAM{
 		handle:    h,
