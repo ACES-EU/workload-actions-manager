@@ -36,7 +36,7 @@ jobs:
       matrix:
         folder:
           - wam
-        # - wam-scheduler # todo: linting makes sense only for the code that was added on top of scheduler-plugins
+          - wam-scheduler/pkg/wam
 
     steps:
       - name: Checkout code
@@ -46,3 +46,26 @@ jobs:
         with:
           version: v1.60.3
           working-directory: ${{ matrix.folder }}
+
+  go-test:
+    runs-on: ubuntu-latest
+    needs:
+      - go-lint
+    strategy:
+      matrix:
+        folder:
+          - wam
+          - wam-scheduler/pkg/wam
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Run tests
+        run: go test ./...
+        working-directory: ${{ matrix.folder }}

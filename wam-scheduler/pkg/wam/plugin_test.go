@@ -77,7 +77,7 @@ func TestWAMPlugin(t *testing.T) {
 			informerFactory := informers.NewSharedInformerFactory(cs, 0)
 			podInformer := informerFactory.Core().V1().Pods().Informer()
 			for _, p := range test.pods {
-				podInformer.GetStore().Add(p)
+				_ = podInformer.GetStore().Add(p)
 			}
 			registeredPlugins := []tf.RegisterPluginFunc{
 				tf.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
@@ -99,6 +99,9 @@ func TestWAMPlugin(t *testing.T) {
 			}
 
 			wam, err := newFake(ctx, nil, fh)
+			if err != nil {
+				t.Fatalf("failed to init WAM plugin: %s", err)
+			}
 
 			plugin := wam.(framework.FilterPlugin)
 			var actual []framework.Code
@@ -132,23 +135,23 @@ func makeNodeInfo(node string, milliCPU, memory int64) *framework.NodeInfo {
 	return ni
 }
 
-func makePod(name string, requests v1.ResourceList) *v1.Pod {
-	return &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name: name,
-					Resources: v1.ResourceRequirements{
-						Requests: requests,
-					},
-				},
-			},
-		},
-	}
-}
+//func makePod(name string, requests v1.ResourceList) *v1.Pod {
+//	return &v1.Pod{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: name,
+//		},
+//		Spec: v1.PodSpec{
+//			Containers: []v1.Container{
+//				{
+//					Name: name,
+//					Resources: v1.ResourceRequirements{
+//						Requests: requests,
+//					},
+//				},
+//			},
+//		},
+//	}
+//}
 
 var _ framework.SharedLister = &fakeSharedLister{}
 
