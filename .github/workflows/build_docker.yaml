@@ -66,7 +66,7 @@ jobs:
 
       - name: Push scheduler image
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository }}/wam
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/wam-scheduler
           IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
           docker push $IMAGE_NAME:latest
           docker push $IMAGE_NAME:${{ github.sha }}
