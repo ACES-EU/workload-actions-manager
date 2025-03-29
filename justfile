@@ -7,7 +7,7 @@ build_and_push_wam_scheduler:
     set -euxo pipefail
     cd wam-scheduler || exit
     ./hack/update-codegen.sh
-    make local-image
+    ARCH=amd64 make local-image
     docker tag localhost:5000/scheduler-plugins/kube-scheduler:latest k3d-registry.localhost:50000/wam-scheduler:latest
     docker push k3d-registry.localhost:50000/wam-scheduler:latest
 

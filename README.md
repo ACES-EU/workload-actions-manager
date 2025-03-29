@@ -60,7 +60,7 @@ just build_and_push
 ## Deploy
 
 ```bash
-helm install --namespace default wam-redis deploy/redis
+helm install --create-namespace --namespace wam wam-redis deploy/redis
 sleep 30 # wait for Redis to start
 helm install --namespace kube-system wam-scheduler deploy/wam-scheduler
 helm install --namespace default wam deploy/wam
@@ -74,7 +74,7 @@ kubectl port-forward <wam_pod_name> 3030:3030
 ```bash
 # create a replica of A on node 7
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-7"}}], "id":"1"}' \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "default", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-a"}, "node": {"name": "ip-172-31-41-133"}}], "id":"1"}' \
   http://localhost:3030/rpc
   
 # create a replica of A on node 4

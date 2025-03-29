@@ -1,9 +1,9 @@
 replicas: 1
 
 image:
-  repository: k3d-registry.localhost:50000/wam
+  repository: ghcr.io/vidbregar/workload-actions-manager/wam
   pullPolicy: Always
-  tag: "latest"
+  tag: "0.1.0"
 
 nameOverride: ""
 fullnameOverride: ""
@@ -11,6 +11,6 @@ fullnameOverride: ""
 listenPort: 3030
 
 redis:
-  host: "wam-redis-master.default.svc.cluster.local"
+  host: "wam-redis-master.wam.svc.cluster.local"
   port: "6379"
   password: "redis_test_password"
