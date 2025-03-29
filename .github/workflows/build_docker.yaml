@@ -6,7 +6,7 @@ on:
       - main  # Adjust to your default branch
 
 jobs:
-  build-and-push:
+  build-and-push-wam:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,6 +31,40 @@ jobs:
           docker tag $IMAGE_NAME:latest $IMAGE_NAME:${{ github.sha }}
 
       - name: Push WAM image
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/wam
+          IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:${{ github.sha }}
+
+  build-and-push-scheduler:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build scheduler image
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/wam-scheduler
+          IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
+          cd wam-scheduler || exit
+          ./hack/update-codegen.sh
+          make local-image
+          docker tag localhost:5000/scheduler-plugins/kube-scheduler:latest $IMAGE_NAME:latest
+          docker tag $IMAGE_NAME:latest $IMAGE_NAME:${{ github.sha }}
+
+      - name: Push scheduler image
         run: |
           IMAGE_NAME=ghcr.io/${{ github.repository }}/wam
           IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
