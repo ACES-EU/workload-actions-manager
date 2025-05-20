@@ -89,8 +89,8 @@ func (w *WAM) PreFilter(ctx context.Context, state *framework.CycleState, pod *v
 
 	sugEncoded, err := w.rdb.LPop(context.TODO(), queue).Result()
 	if errors.Is(err, redis.Nil) {
-		lh.V(3).Info(fmt.Sprintf("no suggestion found for %s: scheduling without a scheduling suggestion", pod.Name))
-		return nil, framework.NewStatus(framework.Success, "")
+		lh.V(3).Info(fmt.Sprintf("no suggestion found for %s: keeping pod in pending state", pod.Name))
+		return nil, framework.NewStatus(framework.Unschedulable, "")
 	} else if err != nil {
 		lh.Error(err, "error connecting to Redis")
 		return nil, framework.NewStatus(framework.Error, "")
@@ -126,8 +126,8 @@ func (w *WAM) Filter(ctx context.Context, state *framework.CycleState, pod *v1.P
 	}
 	suggestion, ok := data.(*SchedulingSuggestion)
 	if !ok || suggestion == nil {
-		// no suggestion has been found, fallback to the rest of the plugins' filters
-		return framework.NewStatus(framework.Success)
+		// no suggestion has been found, keep the pod pending
+		return framework.NewStatus(framework.Unschedulable)
 	}
 
 	lh.V(5).Info(fmt.Sprintf("using suggestion %+v", suggestion))
