@@ -116,6 +116,22 @@ echo "$pod_to_swap_B_2"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Swap\",\"params\":[{\"x\": {\"namespace\": \"default\", \"name\": \"$pod_to_swap_A\"}, \"y\": [{\"namespace\": \"default\", \"name\": \"$pod_to_swap_B_1\"}, {\"namespace\": \"default\", \"name\": \"$pod_to_swap_B_2\"}]}], \"id\": \"1\"}" \
   http://localhost:3030/rpc
+  
+# Deploy pods in a pending state and use bind action to schedule such pods on desired nodes.
+# Creates 2 pods in pending state
+kubectl apply -f docs/bind-deployment.yaml
+
+# Pods that are pending and have not been scheduled by wam-scheduler are candidates for scheduling
+# (nodeName is not set since wam-scheduler only handles scheduling of pods that are part of some action, such as action.Create, action.Move, ...).
+
+# Fetch one such pending pod
+pod_to_bind=$(kubectl get events --field-selector reason=FailedScheduling,involvedObject.kind=Pod --sort-by='.lastTimestamp' -o json | jq -r '.items[] | select(.reason = "FailedScheduling") | .involvedObject.name' | sort | uniq | head -1)
+echo $pod_to_bind
+
+# For example, bind such pod to node 6.
+curl -X POST -H "Content-Type: application/json" \
+  -d "{\"method\":\"action.Bind\",\"params\":[{\"pod\": {\"namespace\": \"default\", \"name\": \"$pod_to_bind\"}, \"node\": {\"name\": \"k3d-aces-agent-6\"}}], \"id\":\"1\"}" \
+  http://localhost:3030/rpc
 ```
 
 ## Clean up

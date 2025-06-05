@@ -20,6 +20,23 @@ func NewActionService(k8sClient *clientset.Clientset, rdb *redis.Client) *Action
 	}
 }
 
+func (as *ActionService) Bind(r *http.Request, args *BindArgs, reply *BindReply) error {
+	err := validateBindReq(args)
+	if err != nil {
+		return err
+	}
+
+	log.Println("bind action called")
+
+	reply.Message = "ok"
+	err = as.BindHandler(args)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (as *ActionService) Create(r *http.Request, args *CreateArgs, reply *CreateReply) error {
 	err := validateCreateReq(args)
 	if err != nil {
