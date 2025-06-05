@@ -1,0 +1,21 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bind-test
+  labels:
+    app: bind-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bind-test
+  template:
+    metadata:
+      labels:
+        app: bind-test
+    spec:
+      schedulerName: "wam-scheduler"
+      containers:
+        - name: bind-test
+          image: gcr.io/google_containers/pause
