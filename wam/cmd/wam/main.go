@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	database "github.com/ACES-EU/workload-actions-manager/db"
 	"github.com/ACES-EU/workload-actions-manager/wam/pkg/actions"
 	wamconfig "github.com/ACES-EU/workload-actions-manager/wam/pkg/config"
 	"github.com/gorilla/rpc"
 	jsoncodec "github.com/gorilla/rpc/json"
+	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -47,9 +50,23 @@ func main() {
 
 	log.Println("configured Redis client")
 
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, fmt.Sprintf("postgres://%s:%s@%s:%s/%s", config.Postgres.User, config.Postgres.Password, config.Postgres.Host, config.Postgres.Port, config.Postgres.Db))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close(ctx)
+
+	err = conn.Ping(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db := database.New(conn)
+
 	s := rpc.NewServer()
 	s.RegisterCodec(jsoncodec.NewCodec(), "application/json")
-	err = s.RegisterService(actions.NewActionService(k8sClient, rdb), "action")
+	err = s.RegisterService(actions.NewActionService(k8sClient, rdb, db), "action")
 	if err != nil {
 		panic(err)
 	}

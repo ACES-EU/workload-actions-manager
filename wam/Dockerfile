@@ -3,13 +3,14 @@
 ############################
 # BUILD
 ############################
-FROM golang:1.22.1-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-COPY . .
+COPY db db
+COPY wam wam
 
-RUN CGO_ENABLED=0 go build \
+RUN cd wam && CGO_ENABLED=0 go build \
   -mod=vendor \
   -a -o build/wam \
   ./cmd/wam
@@ -19,6 +20,6 @@ RUN CGO_ENABLED=0 go build \
 ############################
 FROM alpine
 
-COPY --from=builder /app/build/wam /bin/wam
+COPY --from=builder /app/wam/build/wam /bin/wam
 
 CMD [ "/bin/wam" ]

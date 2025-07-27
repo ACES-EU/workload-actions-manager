@@ -12,7 +12,7 @@ build_and_push_wam_scheduler:
     docker push k3d-registry.localhost:50000/wam-scheduler:latest
 
 build_and_push_wam:
-    docker build -t k3d-registry.localhost:50000/wam:latest wam
+    docker build -t k3d-registry.localhost:50000/wam:latest -f wam/Dockerfile .
     docker push k3d-registry.localhost:50000/wam:latest
 
 build_and_push: build_and_push_wam_scheduler build_and_push_wam

@@ -11,8 +11,9 @@ import (
 // env variable example: REDIS_PORT=1234
 
 type Config struct {
-	Server Server `mapstructure:"SERVER"`
-	Redis  Redis  `mapstructure:"REDIS"`
+	Server   Server   `mapstructure:"SERVER"`
+	Redis    Redis    `mapstructure:"REDIS"`
+	Postgres Postgres `mapstructure:"POSTGRES"`
 }
 
 type Server struct {
@@ -22,6 +23,14 @@ type Server struct {
 type Redis struct {
 	Host     string `mapstructure:"HOST"`
 	Port     string `mapstructure:"PORT"`
+	Password string `mapstructure:"PASSWORD"`
+}
+
+type Postgres struct {
+	Host     string `mapstructure:"HOST"`
+	Port     string `mapstructure:"PORT"`
+	Db       string `mapstructure:"DB"`
+	User     string `mapstructure:"USER"`
 	Password string `mapstructure:"PASSWORD"`
 }
 
