@@ -14,17 +14,18 @@
 ARG ARCH
 ARG GO_BASE_IMAGE=golang
 ARG ALPINE_BASE_IMAGE=$ARCH/alpine
-FROM $GO_BASE_IMAGE:1.21
+FROM $GO_BASE_IMAGE:1.23
 
 WORKDIR /go/src/sigs.k8s.io/scheduler-plugins
-COPY . .
+COPY wam-scheduler wam-scheduler
+COPY db db
 ARG ARCH
 ARG RELEASE_VERSION
-RUN RELEASE_VERSION=${RELEASE_VERSION} make build-scheduler.$ARCH
+RUN cd wam-scheduler && RELEASE_VERSION=${RELEASE_VERSION} make build-scheduler.$ARCH
 
 FROM $ALPINE_BASE_IMAGE:3.16
 
-COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/bin/kube-scheduler /bin/kube-scheduler
+COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/wam-scheduler/bin/kube-scheduler /bin/kube-scheduler
 
 WORKDIR /bin
 CMD ["kube-scheduler"]

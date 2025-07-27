@@ -60,13 +60,17 @@ just build_and_push
 ## Deploy
 
 ```bash
+kubectl create namespace wam
+kubectl apply --namespace wam -f deploy/test/postgres.yaml
 helm install --namespace default wam-redis deploy/redis
 sleep 30 # wait for Redis to start
 helm install --namespace kube-system wam-scheduler deploy/wam-scheduler
 helm install --namespace default wam deploy/wam
-helm install --namespace default test-a deploy/test-a
-helm install --namespace default test-b deploy/test-b
-kubectl port-forward <wam_pod_name> 3030:3030
+helm upgrade --namespace default test-a deploy/test-a
+helm upgrade --namespace default test-b deploy/test-b
+kubectl port-forward svc/wam 3030:3030
+kubectl port-forward -n wam svc/postgres-service 5432:5432
+echo "Connect to the 'aces' database and create the tables defined in db/schema.sql" 
 ```
 
 ## Examples
@@ -108,13 +112,11 @@ curl -X POST -H "Content-Type: application/json" \
 
 # swap replica of A (node 7) with replicas of B (node 4)
 export pod_to_swap_A=$(kubectl get pods -l 'app.kubernetes.io/name=test-a' -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
-export pod_to_swap_B_1=$(kubectl get pods -l 'app.kubernetes.io/name=test-b' -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | sort | head -n 1)
-export pod_to_swap_B_2=$(kubectl get pods -l 'app.kubernetes.io/name=test-b' -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | sort | tail -n 1)
+export pod_to_swap_B=$(kubectl get pods -l 'app.kubernetes.io/name=test-b' -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | sort | head -n 1)
 echo "$pod_to_swap_A"
-echo "$pod_to_swap_B_1"
-echo "$pod_to_swap_B_2"
+echo "$pod_to_swap_B"
 curl -X POST -H "Content-Type: application/json" \
-  -d "{\"method\":\"action.Swap\",\"params\":[{\"x\": {\"namespace\": \"default\", \"name\": \"$pod_to_swap_A\"}, \"y\": [{\"namespace\": \"default\", \"name\": \"$pod_to_swap_B_1\"}, {\"namespace\": \"default\", \"name\": \"$pod_to_swap_B_2\"}]}], \"id\": \"1\"}" \
+  -d "{\"method\":\"action.Swap\",\"params\":[{\"x\": {\"namespace\": \"default\", \"name\": \"$pod_to_swap_A\"}, \"y\": {\"namespace\": \"default\", \"name\": \"$pod_to_swap_B\"}}], \"id\": \"1\"}" \
   http://localhost:3030/rpc
   
 # Deploy pods in a pending state and use bind action to schedule such pods on desired nodes.
@@ -125,7 +127,7 @@ kubectl apply -f docs/bind-deployment.yaml
 # (nodeName is not set since wam-scheduler only handles scheduling of pods that are part of some action, such as action.Create, action.Move, ...).
 
 # Fetch one such pending pod
-pod_to_bind=$(kubectl get events --field-selector reason=FailedScheduling,involvedObject.kind=Pod --sort-by='.lastTimestamp' -o json | jq -r '.items[] | select(.reason = "FailedScheduling") | .involvedObject.name' | sort | uniq | head -1)
+export pod_to_bind=$(kubectl get events --field-selector reason=FailedScheduling,involvedObject.kind=Pod --sort-by='.lastTimestamp' -o json | jq -r '.items[] | select(.reason = "FailedScheduling") | .involvedObject.name' | sort | uniq | head -1)
 echo $pod_to_bind
 
 # For example, bind such pod to node 6.

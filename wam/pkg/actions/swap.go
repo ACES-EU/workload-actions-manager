@@ -3,6 +3,9 @@ package actions
 import (
 	"context"
 	"fmt"
+	"github.com/ACES-EU/workload-actions-manager/db"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"log"
@@ -47,151 +50,199 @@ type TargetScaleKey struct {
 	DeploymentName string
 }
 
-func (as *ActionService) SwapHandler(args *SwapArgs) {
-	pods := make([]Pod, len(args.Y)+1)
-	pods[0] = args.X
-	for i := 0; i < len(args.Y); i++ {
-		pods[i+1] = args.Y[i]
+func (as *ActionService) SwapHandler(idX uuid.UUID, idY uuid.UUID, args *SwapArgs) {
+	startTime := time.Now()
+
+	waX, err := as.db.CreateActionStartTime(context.TODO(), db.CreateActionStartTimeParams{
+		ID:                  idX,
+		ActionType:          db.ActionTypeEnumSwapX,
+		ActionStatus:        db.ActionStatusEnumPending,
+		ActionStartTime:     &startTime,
+		ActionEndTime:       nil,
+		ActionReason:        pgtype.Text{},
+		PodParentName:       pgtype.Text{},
+		PodParentType:       pgtype.Text{},
+		PodParentUid:        nil,
+		CreatedPodName:      pgtype.Text{},
+		CreatedPodNamespace: pgtype.Text{},
+		CreatedNodeName:     pgtype.Text{},
+		DeletedPodName:      pgtype.Text{},
+		DeletedPodNamespace: pgtype.Text{},
+		DeletedNodeName:     pgtype.Text{},
+		BoundPodName:        pgtype.Text{},
+		BoundPodNamespace:   pgtype.Text{},
+		BoundNodeName:       pgtype.Text{},
+	})
+	if err != nil {
+		log.Printf("error initializing action in db: %v\n", err)
 	}
 
-	targetScales := make(map[TargetScaleKey]int32)
-	selectors := make(map[TargetScaleKey]map[string]string)
-	nodeX := ""
-	nodeY := ""
+	waY, err := as.db.CreateActionStartTime(context.TODO(), db.CreateActionStartTimeParams{
+		ID:                  idY,
+		ActionType:          db.ActionTypeEnumSwapY,
+		ActionStatus:        db.ActionStatusEnumPending,
+		ActionStartTime:     &startTime,
+		ActionEndTime:       nil,
+		ActionReason:        pgtype.Text{},
+		PodParentName:       pgtype.Text{},
+		PodParentType:       pgtype.Text{},
+		PodParentUid:        nil,
+		CreatedPodName:      pgtype.Text{},
+		CreatedPodNamespace: pgtype.Text{},
+		CreatedNodeName:     pgtype.Text{},
+		DeletedPodName:      pgtype.Text{},
+		DeletedPodNamespace: pgtype.Text{},
+		DeletedNodeName:     pgtype.Text{},
+		BoundPodName:        pgtype.Text{},
+		BoundPodNamespace:   pgtype.Text{},
+		BoundNodeName:       pgtype.Text{},
+	})
+	if err != nil {
+		log.Printf("error initializing action in db: %v\n", err)
+	}
 
-	for i, pod := range pods {
-		podObj, err := as.k8sClient.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+	podX, err := as.k8sClient.CoreV1().Pods(args.X.Namespace).Get(context.TODO(), args.X.Name, metav1.GetOptions{})
+	if err != nil {
+		log.Printf("error getting pod X: %v\n", err)
+
+		waX.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		waX.ActionEndTime = &endTime
+		waX, err = updateActionLog(as.db, waX)
 		if err != nil {
-			log.Printf("error getting pod: %v\n", err)
-			return
+			log.Printf("error updating action in db: %v\n", err)
 		}
 
-		nodeName := podObj.Spec.NodeName
-		if i == 0 {
-			nodeX = nodeName
-		} else if nodeY == "" {
-			nodeY = nodeName
-		} else if nodeY != nodeName {
-			// verify all Y pod nodes are the same
-			log.Printf("aborting move: all Y pods must be running on the same node: %s != %s\n", nodeY, nodeName)
-			return
-		}
-
-		deployment, err := getPodsDeployment(podObj, as.k8sClient)
+		waY.ActionStatus = db.ActionStatusEnumFailed
+		waY.ActionEndTime = &endTime
+		waY, err = updateActionLog(as.db, waY)
 		if err != nil {
-			log.Printf("error getting pod's owner reference: %v\n", err)
-			return
+			log.Printf("error updating action in db: %v\n", err)
 		}
 
-		deploymentObj, _ := as.k8sClient.AppsV1().Deployments(pod.Namespace).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
+		return
+	}
+
+	podY, err := as.k8sClient.CoreV1().Pods(args.Y.Namespace).Get(context.TODO(), args.Y.Name, metav1.GetOptions{})
+	if err != nil {
+		log.Printf("error getting pod X: %v\n", err)
+
+		waX.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		waX.ActionEndTime = &endTime
+		waX, err = updateActionLog(as.db, waX)
 		if err != nil {
-			log.Printf("error getting pod's deployment: %v\n", err)
-			return
+			log.Printf("error updating action in db: %v\n", err)
 		}
 
-		scale := deploymentObj.Status.Replicas
+		waY.ActionStatus = db.ActionStatusEnumFailed
+		waY.ActionEndTime = &endTime
+		waY, err = updateActionLog(as.db, waY)
 		if err != nil {
-			log.Printf("error getting pod's deployment current scale: %v\n", err)
-			return
+			log.Printf("error updating action in db: %v\n", err)
 		}
 
-		key := TargetScaleKey{pod.Namespace, deployment.Name}
-		_, ok := targetScales[key]
-		if !ok {
-			targetScales[key] = scale
-			selectors[key] = deploymentObj.Spec.Selector.MatchLabels
+		return
+	}
+
+	deleteArgsX := args.X.toDeleteArgs()
+	deleteArgsY := args.Y.toDeleteArgs()
+
+	createArgsX, err := args.X.toCreateArgs(as.k8sClient, podY.Spec.NodeName)
+	if err != nil {
+		log.Printf("error creating create args: %s", err.Error())
+
+		waX.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		waX.ActionEndTime = &endTime
+		waX, err = updateActionLog(as.db, waX)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
 		}
 
-		targetScales[key] -= 1
-	}
-
-	// this will be used later on, but we need to prepare it here
-	createArgs := make([]*CreateArgs, len(pods))
-	for i, pod := range pods {
-		if i == 0 {
-			ca, err := pod.toCreateArgs(as.k8sClient, nodeY)
-			if err != nil {
-				log.Printf("error creating create args: %s", err.Error())
-				return
-			}
-			createArgs[i] = ca
-		} else {
-			ca, err := pod.toCreateArgs(as.k8sClient, nodeX)
-			if err != nil {
-				log.Printf("error creating create args: %s", err.Error())
-				return
-			}
-			createArgs[i] = ca
+		waY.ActionStatus = db.ActionStatusEnumFailed
+		waY.ActionEndTime = &endTime
+		waY, err = updateActionLog(as.db, waY)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
 		}
+
+		return
 	}
+	createArgsY, err := args.Y.toCreateArgs(as.k8sClient, podX.Spec.NodeName)
+	if err != nil {
+		log.Printf("error creating create args: %s", err.Error())
 
-	log.Printf("deleting x and y pods\n")
-	// here, calling create for pods of the same workload is UNSAFE! since there is no locking mechanism (yet)
-	// for prototype purposes we hence call creates sequentially
-	for _, pod := range pods {
-		as.DeleteHandler(pod.toDeleteArgs())
-	}
-
-	log.Printf("waiting for 1 X pod to be deleted and %d Y pods to be deleted\n", len(args.Y))
-
-	timeout := time.Minute * 5
-	timer := time.NewTimer(timeout)
-
-	// once the delete target is met, it is removed from the map
-	// wait until all targets have been met or timeout is reached (deleting a pod could take a long time...)
-	for len(targetScales) > 0 {
-		select {
-		case <-timer.C:
-			log.Println("waiting for deletes exceeded timeout")
-			return
-		default:
-			log.Printf("waiting for deletes: %d left\n", len(targetScales))
-			time.Sleep(30 * time.Second)
-
-			for key := range targetScales {
-				targetScale := targetScales[key]
-				selector := selectors[key]
-
-				// does not include pods that are terminating
-				//currentScale, err := as.k8sClient.AppsV1().
-				//	Deployments(key.Namespace).
-				//	GetScale(context.TODO(), key.DeploymentName, metav1.GetOptions{})
-				//if err != nil {
-				//	log.Printf("error getting deployment's current scale: %v\n", err)
-				//	return
-				//}
-
-				podList, err := as.k8sClient.CoreV1().Pods(key.Namespace).List(context.TODO(), metav1.ListOptions{
-					LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: selector}),
-				})
-				if err != nil {
-					panic(err.Error())
-				}
-				currentScale := len(podList.Items) // including terminating pods
-
-				if int32(currentScale) <= targetScale {
-					delete(targetScales, key)
-					log.Printf("deployment %s in namespace %s reached target scale %d\n", key.DeploymentName, key.Namespace, targetScale)
-				}
-			}
+		waX.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		waX.ActionEndTime = &endTime
+		waX, err = updateActionLog(as.db, waX)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
 		}
+
+		waY.ActionStatus = db.ActionStatusEnumFailed
+		waY.ActionEndTime = &endTime
+		waY, err = updateActionLog(as.db, waY)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
+
+		return
 	}
+
+	as.DeleteHandler(idX, db.ActionTypeEnumSwapX, deleteArgsX)
+	as.DeleteHandler(idY, db.ActionTypeEnumSwapY, deleteArgsY)
 
 	log.Printf("all deletes have completed")
-	log.Printf("continuing with creates")
 
-	// here, calling create for pods of the same workload is UNSAFE! since there is no locking mechanism (yet)
-	// for prototype purposes we hence call creates sequentially
-	for _, createArg := range createArgs {
-		_, _ = as.CreateHandler(createArg)
+	// Delete might take a while, so the created pods might be in pending state for some time
+	// until they're finally scheduled where they're supposed to go. That's ok.
+
+	log.Printf("continuing with creates")
+	_, err = as.CreateHandler(idX, db.ActionTypeEnumSwapX, createArgsX)
+	if err != nil {
+		waX.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		waX.ActionEndTime = &endTime
+		waX, err = updateActionLog(as.db, waX)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
+
+		waY.ActionStatus = db.ActionStatusEnumFailed
+		waY.ActionEndTime = &endTime
+		waY, err = updateActionLog(as.db, waY)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
 	}
+	_, err = as.CreateHandler(idY, db.ActionTypeEnumSwapY, createArgsY)
+	if err != nil {
+		waX.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		waX.ActionEndTime = &endTime
+		waX, err = updateActionLog(as.db, waX)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
+
+		waY.ActionStatus = db.ActionStatusEnumFailed
+		waY.ActionEndTime = &endTime
+		waY, err = updateActionLog(as.db, waY)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
+	}
+
+	log.Printf("all creates have completed")
 
 	log.Println("swap action successful")
 }
 
 type SwapArgs struct {
-	X Pod   `json:"x"`
-	Y []Pod `json:"y"`
+	X Pod `json:"x"`
+	Y Pod `json:"y"`
 }
 
 type SwapReply struct {
@@ -207,15 +258,8 @@ func validateSwapReq(args *SwapArgs) error {
 		return fmt.Errorf("x pod's name must be specified")
 	}
 
-	for i := range args.Y {
-		pod := args.Y[i]
-		if pod.Namespace == "" {
-			pod.Namespace = "default"
-		}
-
-		if pod.Name == "" {
-			return fmt.Errorf("y pod's, at index %d, name must be specified", i)
-		}
+	if args.Y.Name == "" {
+		return fmt.Errorf("y pod's name must be specified")
 	}
 
 	return nil

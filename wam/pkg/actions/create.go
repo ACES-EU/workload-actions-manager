@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ACES-EU/workload-actions-manager/db"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/uuid"
 	"log"
+	"time"
 )
 
 func (w Workload) QueueName() string {
@@ -38,9 +40,9 @@ func validateCreateReq(args *CreateArgs) error {
 	return nil
 }
 
-func (as *ActionService) addSchedulingSuggestion(queue string, nodeName string) (*SchedulingSuggestion, error) {
+func (as *ActionService) addSchedulingSuggestion(id uuid.UUID, queue string, nodeName string) (*SchedulingSuggestion, error) {
 	sug := &SchedulingSuggestion{
-		ID:       uuid.NewUUID(),
+		ID:       id,
 		NodeName: nodeName,
 	}
 
@@ -79,14 +81,56 @@ func (as *ActionService) removeSchedulingSuggestion(queue string, sug *Schedulin
 	return nil
 }
 
-func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion, error) {
+func (as *ActionService) CreateHandler(id uuid.UUID, actionType db.ActionTypeEnum, args *CreateArgs) (*SchedulingSuggestion, error) {
+	// todo: if swap action, fetch existing log
+
+	var wa db.WorkloadAction
+	var err error
+	if actionType == db.ActionTypeEnumCreate {
+		wa, err = as.db.CreateAction(context.TODO(), db.CreateActionParams{
+			ID:                  id,
+			ActionType:          actionType,
+			ActionStatus:        db.ActionStatusEnumPending,
+			ActionEndTime:       nil,
+			ActionReason:        pgtype.Text{},
+			PodParentName:       pgtype.Text{},
+			PodParentType:       pgtype.Text{},
+			PodParentUid:        nil,
+			CreatedPodName:      pgtype.Text{},
+			CreatedPodNamespace: pgtype.Text{},
+			CreatedNodeName:     pgtype.Text{},
+			DeletedPodName:      pgtype.Text{},
+			DeletedPodNamespace: pgtype.Text{},
+			DeletedNodeName:     pgtype.Text{},
+			BoundPodName:        pgtype.Text{},
+			BoundPodNamespace:   pgtype.Text{},
+			BoundNodeName:       pgtype.Text{},
+		})
+
+		if err != nil {
+			log.Printf("error initializing bind action in db: %v\n", err)
+		}
+	} else if actionType == db.ActionTypeEnumMove || actionType == db.ActionTypeEnumSwapX || actionType == db.ActionTypeEnumSwapY {
+		wa, err = as.db.GetAction(context.TODO(), id)
+	}
+
 	queue := args.Workload.QueueName()
 
+	// create queue ID
 	log.Printf("using queue %s\n", queue)
 
-	suggestion, err := as.addSchedulingSuggestion(queue, args.Node.Name)
+	suggestion, err := as.addSchedulingSuggestion(id, queue, args.Node.Name)
 	if err != nil {
 		log.Println(err)
+
+		wa.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		wa.ActionEndTime = &endTime
+		wa, err = updateActionLog(as.db, wa)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
+
 		return nil, err
 	}
 
@@ -101,6 +145,14 @@ func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion,
 		GetScale(context.TODO(), args.Workload.Name, metav1.GetOptions{})
 	if err != nil {
 		log.Println(err)
+
+		wa.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		wa.ActionEndTime = &endTime
+		wa, err = updateActionLog(as.db, wa)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
 
 		err = as.removeSchedulingSuggestion(queue, suggestion)
 		if err != nil {
@@ -121,6 +173,14 @@ func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion,
 	if err != nil {
 		log.Println(err)
 
+		wa.ActionStatus = db.ActionStatusEnumFailed
+		endTime := time.Now()
+		wa.ActionEndTime = &endTime
+		wa, err = updateActionLog(as.db, wa)
+		if err != nil {
+			log.Printf("error updating action in db: %v\n", err)
+		}
+
 		err = as.removeSchedulingSuggestion(queue, suggestion)
 		if err != nil {
 			log.Println(err)
@@ -132,6 +192,10 @@ func (as *ActionService) CreateHandler(args *CreateArgs) (*SchedulingSuggestion,
 	log.Printf("updated new scale of %s to: %d\n", args.Workload.Name, s.Spec.Replicas)
 
 	log.Println("create action successful")
+
+	// // // //
+	// the rest of the info such as pod name, deployment name, etc. are added to the log in the WAM scheduler
+	// // // //
 
 	return suggestion, nil
 }
@@ -146,6 +210,6 @@ type CreateReply struct {
 }
 
 type SchedulingSuggestion struct {
-	ID       types.UID `json:"id"`
+	ID       uuid.UUID `json:"id"`
 	NodeName string    `json:"node_name"`
 }

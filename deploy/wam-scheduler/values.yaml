@@ -12,3 +12,10 @@ redis:
   host: "wam-redis-master.default.svc.cluster.local"
   port: "6379"
   password: "redis_test_password"
+
+postgres:
+  host: "postgres-service.wam.svc.cluster.local"
+  port: "5432"
+  db: "aces"
+  user: "postgres"
+  password: "postgres"

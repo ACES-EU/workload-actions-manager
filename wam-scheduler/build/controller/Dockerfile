@@ -11,19 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-ARG ARCH
-ARG GO_BASE_IMAGE=golang
-ARG ALPINE_BASE_IMAGE=$ARCH/alpine
-FROM $GO_BASE_IMAGE:1.21
-
-WORKDIR /go/src/sigs.k8s.io/scheduler-plugins
-COPY . .
-ARG ARCH
-RUN make build-controller.$ARCH
-
-FROM $ALPINE_BASE_IMAGE:3.16
-
-COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/bin/controller /bin/controller
-
-WORKDIR /bin
-CMD ["controller"]
+#ARG ARCH
+#ARG GO_BASE_IMAGE=golang
+#ARG ALPINE_BASE_IMAGE=$ARCH/alpine
+#FROM $GO_BASE_IMAGE:1.23
+#
+#WORKDIR /go/src/sigs.k8s.io/scheduler-plugins
+#COPY . .
+#ARG ARCH
+#RUN make build-controller.$ARCH
+#
+#FROM $ALPINE_BASE_IMAGE:3.16
+#
+#COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/bin/controller /bin/controller
+#
+#WORKDIR /bin
+#CMD ["controller"]

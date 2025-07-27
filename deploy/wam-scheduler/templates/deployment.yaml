@@ -35,6 +35,19 @@ spec:
                 secretKeyRef:
                   name: {{ include "wam-scheduler.fullname" . }}
                   key: WAM_REDIS_PASSWORD
+            - name: WAM_POSTGRES_HOST
+              value: "{{ .Values.postgres.host }}"
+            - name: WAM_POSTGRES_PORT
+              value: "{{ .Values.postgres.port }}"
+            - name: WAM_POSTGRES_DB
+              value: "{{ .Values.postgres.db }}"
+            - name: WAM_POSTGRES_USER
+              value: "{{ .Values.postgres.user }}"
+            - name: WAM_POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wam-scheduler.fullname" . }}
+                  key: WAM_POSTGRES_PASSWORD
           resources:
             requests:
               cpu: 200m

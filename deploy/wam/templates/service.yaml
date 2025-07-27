@@ -8,8 +8,7 @@ spec:
   type: ClusterIP
   ports:
     - port: {{ .Values.listenPort }}
-      targetPort: http
+      targetPort: 3030
       protocol: TCP
-      name: http
   selector:
     {{- include "wam.selectorLabels" . | nindent 4 }}
