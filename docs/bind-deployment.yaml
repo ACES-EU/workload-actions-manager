@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: bind-test
+  namespace: ul
   labels:
     app: bind-test
 spec:

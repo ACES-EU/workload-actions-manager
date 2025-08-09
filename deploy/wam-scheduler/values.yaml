@@ -1,15 +1,15 @@
 replicas: 1
 
 image:
-  repository: k3d-registry.localhost:50000/wam-scheduler
+  repository: ghcr.io/vidbregar/workload-actions-manager/wam-scheduler
   pullPolicy: Always
-  tag: "latest"
+  tag: "0.4.0"
 
 nameOverride: ""
 fullnameOverride: ""
 
 redis:
-  host: "wam-redis-master.default.svc.cluster.local"
+  host: "wam-redis-master.ul.svc.cluster.local"
   port: "6379"
   password: "redis_test_password"
 

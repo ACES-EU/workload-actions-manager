@@ -60,14 +60,14 @@ just build_and_push
 ## Deploy
 
 ```bash
-kubectl create namespace wam
-helm install --namespace default wam-redis deploy/redis
+kubectl create namespace ul
+helm install --namespace ul wam-redis deploy/redis
 sleep 30 # wait for Redis to start
 helm install --namespace kube-system wam-scheduler deploy/wam-scheduler
-helm install --namespace default wam deploy/wam
-helm install --namespace default test-a deploy/test-a
-helm install --namespace default test-b deploy/test-b
-kubectl port-forward svc/wam 3030:3030 
+helm install --namespace ul wam-app deploy/wam
+helm install --namespace ul test-a deploy/test-a
+helm install --namespace ul test-b deploy/test-b
+kubectl port-forward svc/wam-app 3030:3030 
 ```
 
 ## Examples
