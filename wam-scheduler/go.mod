@@ -7,7 +7,7 @@ toolchain go1.24.5
 godebug gotypesalias=0
 
 require (
-	github.com/ACES-EU/workload-actions-manager/db v0.0.0
+	github.com/ACES-EU/workload-actions-manager/logger v0.0.0
 	github.com/containers/common v0.46.0
 	github.com/diktyo-io/appgroup-api v1.0.1-alpha
 	github.com/diktyo-io/networktopology-api v1.0.1-alpha
@@ -157,7 +157,7 @@ require (
 )
 
 replace (
-	github.com/ACES-EU/workload-actions-manager/db v0.0.0 => ../db
+	github.com/ACES-EU/workload-actions-manager/logger v0.0.0 => ../logger
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.0
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc => go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.21.0

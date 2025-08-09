@@ -3,9 +3,8 @@ package actions
 import (
 	"context"
 	"fmt"
-	"github.com/ACES-EU/workload-actions-manager/db"
+	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
 	"time"
@@ -23,86 +22,66 @@ func validateDeleteReq(args *DeleteArgs) error {
 	return nil
 }
 
-func (as *ActionService) DeleteHandler(id uuid.UUID, actionType db.ActionTypeEnum, args *DeleteArgs) {
-	// todo: swap logging
-
-	var wa db.WorkloadAction
-	var err error
-	if actionType == db.ActionTypeEnumDelete {
-		wa, err = as.db.CreateAction(context.TODO(), db.CreateActionParams{
-			ID:                  id,
-			ActionType:          actionType,
-			ActionStatus:        db.ActionStatusEnumPending,
-			ActionEndTime:       nil,
-			ActionReason:        pgtype.Text{},
-			PodParentName:       pgtype.Text{},
-			PodParentType:       pgtype.Text{},
-			PodParentUid:        nil,
-			CreatedPodName:      pgtype.Text{},
-			CreatedPodNamespace: pgtype.Text{},
-			CreatedNodeName:     pgtype.Text{},
-			DeletedPodName:      pgtype.Text{},
-			DeletedPodNamespace: pgtype.Text{},
-			DeletedNodeName:     pgtype.Text{},
-			BoundPodName:        pgtype.Text{},
-			BoundPodNamespace:   pgtype.Text{},
-			BoundNodeName:       pgtype.Text{},
-		})
-
-		if err != nil {
-			log.Printf("error initializing bind action in db: %v\n", err)
-		}
-	} else if actionType == db.ActionTypeEnumMove || actionType == db.ActionTypeEnumSwapX || actionType == db.ActionTypeEnumSwapY {
-		wa, err = as.db.GetAction(context.TODO(), id)
-	}
-
+func (as *ActionService) DeleteHandler(id uuid.UUID, actionType walog.WorkloadActionTypeEnum, args *DeleteArgs) {
 	pod, err := as.k8sClient.CoreV1().Pods(args.Pod.Namespace).Get(context.TODO(), args.Pod.Name, metav1.GetOptions{})
 	if err != nil {
 		log.Printf("error getting pod: %v\n", err)
 
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
 	}
 
-	wa.DeletedPodNamespace = pgtype.Text{String: pod.Namespace, Valid: true}
-	wa.DeletedPodName = pgtype.Text{String: pod.Name, Valid: true}
-	wa.DeletedNodeName = pgtype.Text{String: pod.Spec.NodeName, Valid: true}
-	wa, err = updateActionLog(as.db, wa)
-	if err != nil {
-		log.Printf("error updating action in db: %v\n", err)
+	logTime := time.Now()
+	_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+		DeletedPodNamespace: &pod.Namespace,
+		DeletedPodName:      &pod.Name,
+		DeletedNodeName:     &pod.Spec.NodeName,
+		UpdatedAt:           &logTime,
+	})
+	if logErr != nil {
+		log.Printf("error updating action log: %v\n", logErr)
 	}
 
 	deployment, err := getPodsDeployment(pod, as.k8sClient)
 	if err != nil {
 		log.Printf("error getting %s's deployment\n", pod.Name)
 
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
 	}
 
-	depUid, err := uuid.Parse(string(deployment.UID))
-	if err == nil {
-		wa.PodParentUid = &depUid
-	}
-	wa.PodParentType = pgtype.Text{String: deployment.Kind, Valid: true}
-	wa.PodParentName = pgtype.Text{String: deployment.Name, Valid: true}
-	wa, err = updateActionLog(as.db, wa)
-	if err != nil {
-		log.Printf("error updating action in db: %v\n", err)
+	depUid, _ := uuid.Parse(string(deployment.UID))
+
+	logTime = time.Now()
+	parentType := walog.PodParentTypeEnumDeployment
+	_, _, logErr = as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+		PodParentType: &parentType,
+		PodParentUID:  &depUid,
+		PodParentName: &deployment.Name,
+		UpdatedAt:     &logTime,
+	})
+	if logErr != nil {
+		log.Printf("error updating action log: %v\n", logErr)
 	}
 
 	// Prefer removing this pod. It is not guaranteed though.
@@ -116,12 +95,15 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType db.ActionTypeEnu
 	if err != nil {
 		log.Println(err)
 
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
@@ -134,13 +116,17 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType db.ActionTypeEnu
 	if err != nil {
 		log.Println(err)
 
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
+
 		return
 	}
 
@@ -155,13 +141,17 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType db.ActionTypeEnu
 	if err != nil {
 		log.Println(err)
 
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
+
 		return
 	}
 
@@ -171,13 +161,16 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType db.ActionTypeEnu
 
 	log.Println("delete action successful")
 
-	if wa.ActionType == db.ActionTypeEnumDelete || wa.ActionType == db.ActionTypeEnumMove {
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa.ActionStatus = db.ActionStatusEnumSucceeded
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+	if actionType == walog.WorkloadActionTypeEnumDelete || actionType == walog.WorkloadActionTypeEnumMove {
+		status := walog.WorkloadActionStatusEnumSucceeded
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 	}
 }

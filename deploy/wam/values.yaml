@@ -15,9 +15,6 @@ redis:
   port: "6379"
   password: "redis_test_password"
 
-postgres:
-  host: "postgres-service.wam.svc.cluster.local"
-  port: "5432"
-  db: "aces"
-  user: "postgres"
-  password: "postgres"
+waLogger:
+  scheme: "http"
+  host: "51.44.28.47:30015"

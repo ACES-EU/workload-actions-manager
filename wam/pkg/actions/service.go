@@ -1,26 +1,27 @@
 package actions
 
 import (
-	"github.com/ACES-EU/workload-actions-manager/db"
-	"github.com/google/uuid"
+	"context"
+	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/redis/go-redis/v9"
 	clientset "k8s.io/client-go/kubernetes"
 	"log"
 	"net/http"
+	"time"
 )
 
 type ActionService struct {
 	k8sClient *clientset.Clientset
 	rdb       *redis.Client
-	db        *db.Queries
+	log       *walog.WALogger
 }
 
-func NewActionService(k8sClient *clientset.Clientset, rdb *redis.Client, db *db.Queries) *ActionService {
+func NewActionService(k8sClient *clientset.Clientset, rdb *redis.Client, logger *walog.WALogger) *ActionService {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	return &ActionService{
 		k8sClient,
 		rdb,
-		db,
+		logger,
 	}
 }
 
@@ -32,10 +33,21 @@ func (as *ActionService) Bind(r *http.Request, args *BindArgs, reply *BindReply)
 
 	log.Println("bind action called")
 
-	id := uuid.Must(uuid.NewUUID())
+	now := time.Now()
+	wa, _, err := as.log.CreateWorkloadAction(context.TODO(), walog.WorkloadActionCreate{
+		ActionType:      walog.WorkloadActionTypeEnumBind,
+		ActionStatus:    walog.WorkloadActionStatusEnumPending,
+		ActionStartTime: now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	})
+	if err != nil {
+		log.Printf("error creating action log: %v\n", err)
+		return err
+	}
 
 	reply.Message = "ok"
-	err = as.BindHandler(id, args)
+	err = as.BindHandler(wa.ID, args)
 	if err != nil {
 		return err
 	}
@@ -51,14 +63,24 @@ func (as *ActionService) Create(r *http.Request, args *CreateArgs, reply *Create
 
 	log.Println("create action called")
 
-	id := uuid.Must(uuid.NewUUID())
-	actionType := db.ActionTypeEnumCreate
+	now := time.Now()
+	wa, _, err := as.log.CreateWorkloadAction(context.TODO(), walog.WorkloadActionCreate{
+		ActionType:      walog.WorkloadActionTypeEnumCreate,
+		ActionStatus:    walog.WorkloadActionStatusEnumPending,
+		ActionStartTime: now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	})
+	if err != nil {
+		log.Printf("error creating action log: %v\n", err)
+		return err
+	}
 
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
 	go func() {
-		_, _ = as.CreateHandler(id, actionType, args)
+		_, _ = as.CreateHandler(wa.ID, wa.ActionType, args)
 	}()
 	log.Println("spawning a handler")
 
@@ -74,13 +96,23 @@ func (as *ActionService) Delete(r *http.Request, args *DeleteArgs, reply *Delete
 
 	log.Println("delete action called")
 
+	now := time.Now()
+	wa, _, err := as.log.CreateWorkloadAction(context.TODO(), walog.WorkloadActionCreate{
+		ActionType:      walog.WorkloadActionTypeEnumDelete,
+		ActionStatus:    walog.WorkloadActionStatusEnumPending,
+		ActionStartTime: now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	})
+	if err != nil {
+		log.Printf("error creating action log: %v\n", err)
+		return err
+	}
+
 	reply.Message = "ok"
 
-	id := uuid.Must(uuid.NewUUID())
-	actionType := db.ActionTypeEnumDelete
-
 	// todo: Think about a worker pool here
-	go as.DeleteHandler(id, actionType, args)
+	go as.DeleteHandler(wa.ID, wa.ActionType, args)
 	log.Println("spawning a handler")
 
 	log.Println("returning to the caller that the request has been accepted")
@@ -95,13 +127,23 @@ func (as *ActionService) Move(r *http.Request, args *MoveArgs, reply *MoveReply)
 
 	log.Println("move action called")
 
-	id := uuid.Must(uuid.NewUUID())
-	actionType := db.ActionTypeEnumMove
+	now := time.Now()
+	wa, _, err := as.log.CreateWorkloadAction(context.TODO(), walog.WorkloadActionCreate{
+		ActionType:      walog.WorkloadActionTypeEnumMove,
+		ActionStatus:    walog.WorkloadActionStatusEnumPending,
+		ActionStartTime: now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	})
+	if err != nil {
+		log.Printf("error creating action log: %v\n", err)
+		return err
+	}
 
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
-	go as.MoveHandler(id, actionType, args)
+	go as.MoveHandler(wa.ID, wa.ActionType, args)
 	log.Println("spawning a handler")
 
 	log.Println("returning to the caller that the request has been accepted")
@@ -116,15 +158,37 @@ func (as *ActionService) Swap(r *http.Request, args *SwapArgs, reply *SwapReply)
 
 	log.Println("swap action called")
 
-	reply.Message = "ok"
+	now := time.Now()
+	waX, _, err := as.log.CreateWorkloadAction(context.TODO(), walog.WorkloadActionCreate{
+		ActionType:      walog.WorkloadActionTypeEnumSwapX,
+		ActionStatus:    walog.WorkloadActionStatusEnumPending,
+		ActionStartTime: now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	})
+	if err != nil {
+		log.Printf("error creating action log: %v\n", err)
+		return err
+	}
 
-	idX := uuid.Must(uuid.NewUUID())
-	idY := uuid.Must(uuid.NewUUID())
+	waY, _, err := as.log.CreateWorkloadAction(context.TODO(), walog.WorkloadActionCreate{
+		ActionType:      walog.WorkloadActionTypeEnumSwapY,
+		ActionStatus:    walog.WorkloadActionStatusEnumPending,
+		ActionStartTime: now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	})
+	if err != nil {
+		log.Printf("error creating action log: %v\n", err)
+		return err
+	}
+
+	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
 	// ensure that no other actions related to the workloads accessed by the swap action run in parallel
 	// since they might affect the wait part of the action or even prevent the action to succeed
-	go as.SwapHandler(idX, idY, args)
+	go as.SwapHandler(waX.ID, waY.ID, args)
 	log.Println("spawning a handler")
 
 	log.Println("returning to the caller that the request has been accepted")

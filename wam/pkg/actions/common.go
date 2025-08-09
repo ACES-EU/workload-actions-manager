@@ -3,7 +3,6 @@ package actions
 import (
 	"context"
 	"fmt"
-	"github.com/ACES-EU/workload-actions-manager/db"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -25,28 +24,6 @@ func getPodsDeployment(pod *v1.Pod, k8sClient *clientset.Clientset) (*metav1.Own
 	}
 
 	return nil, fmt.Errorf("error getting deployment")
-}
-
-func updateActionLog(q *db.Queries, wa db.WorkloadAction) (db.WorkloadAction, error) {
-	return q.UpdateAction(context.TODO(), db.UpdateActionParams{
-		ID:                  wa.ID,
-		ActionType:          wa.ActionType,
-		ActionStatus:        wa.ActionStatus,
-		ActionEndTime:       wa.ActionEndTime,
-		ActionReason:        wa.ActionReason,
-		PodParentName:       wa.PodParentName,
-		PodParentType:       wa.PodParentType,
-		PodParentUid:        wa.PodParentUid,
-		CreatedPodName:      wa.CreatedPodName,
-		CreatedPodNamespace: wa.CreatedPodNamespace,
-		CreatedNodeName:     wa.CreatedNodeName,
-		DeletedPodName:      wa.DeletedPodName,
-		DeletedPodNamespace: wa.DeletedPodNamespace,
-		DeletedNodeName:     wa.DeletedNodeName,
-		BoundPodName:        wa.BoundPodName,
-		BoundPodNamespace:   wa.BoundPodNamespace,
-		BoundNodeName:       wa.BoundNodeName,
-	})
 }
 
 type Workload struct {

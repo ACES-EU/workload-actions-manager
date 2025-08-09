@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.5
 
 require (
-	github.com/ACES-EU/workload-actions-manager/db v0.0.0
+	github.com/ACES-EU/workload-actions-manager/logger v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/rpc v1.2.1
 	github.com/jackc/pgx/v5 v5.7.5
@@ -75,4 +75,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/ACES-EU/workload-actions-manager/db v0.0.0 => ../db
+replace github.com/ACES-EU/workload-actions-manager/logger v0.0.0 => ../logger

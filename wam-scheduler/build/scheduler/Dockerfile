@@ -18,7 +18,7 @@ FROM $GO_BASE_IMAGE:1.23
 
 WORKDIR /go/src/sigs.k8s.io/scheduler-plugins
 COPY wam-scheduler wam-scheduler
-COPY db db
+COPY logger logger
 ARG ARCH
 ARG RELEASE_VERSION
 RUN cd wam-scheduler && RELEASE_VERSION=${RELEASE_VERSION} make build-scheduler.$ARCH

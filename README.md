@@ -61,16 +61,13 @@ just build_and_push
 
 ```bash
 kubectl create namespace wam
-kubectl apply --namespace wam -f deploy/test/postgres.yaml
 helm install --namespace default wam-redis deploy/redis
 sleep 30 # wait for Redis to start
 helm install --namespace kube-system wam-scheduler deploy/wam-scheduler
 helm install --namespace default wam deploy/wam
-helm upgrade --namespace default test-a deploy/test-a
-helm upgrade --namespace default test-b deploy/test-b
-kubectl port-forward svc/wam 3030:3030
-kubectl port-forward -n wam svc/postgres-service 5432:5432
-echo "Connect to the 'aces' database and create the tables defined in db/schema.sql" 
+helm install --namespace default test-a deploy/test-a
+helm install --namespace default test-b deploy/test-b
+kubectl port-forward svc/wam 3030:3030 
 ```
 
 ## Examples

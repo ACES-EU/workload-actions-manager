@@ -13,7 +13,7 @@ import (
 type Config struct {
 	Server   Server   `mapstructure:"SERVER"`
 	Redis    Redis    `mapstructure:"REDIS"`
-	Postgres Postgres `mapstructure:"POSTGRES"`
+	WALogger WALogger `mapstructure:"WALOGGER"`
 }
 
 type Server struct {
@@ -26,12 +26,9 @@ type Redis struct {
 	Password string `mapstructure:"PASSWORD"`
 }
 
-type Postgres struct {
-	Host     string `mapstructure:"HOST"`
-	Port     string `mapstructure:"PORT"`
-	Db       string `mapstructure:"DB"`
-	User     string `mapstructure:"USER"`
-	Password string `mapstructure:"PASSWORD"`
+type WALogger struct {
+	Scheme string `mapstructure:"SCHEME"`
+	Host   string `mapstructure:"HOST"`
 }
 
 func defaultConfig() *Config {

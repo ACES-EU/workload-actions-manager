@@ -35,16 +35,7 @@ spec:
                   key: REDIS_PASSWORD
             - name: SERVER_ADDRESS
               value: "0.0.0.0:{{ .Values.listenPort }}"
-            - name: POSTGRES_HOST
-              value: "{{ .Values.postgres.host }}"
-            - name: POSTGRES_PORT
-              value: "{{ .Values.postgres.port }}"
-            - name: POSTGRES_DB
-              value: "{{ .Values.postgres.db }}"
-            - name: POSTGRES_USER
-              value: "{{ .Values.postgres.user }}"
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "wam.fullname" . }}
-                  key: POSTGRES_PASSWORD
+            - name: WALOGGER_SCHEME
+              value: "{{ .Values.waLogger.scheme }}"
+            - name: WALOGGER_HOST
+              value: "{{ .Values.waLogger.host }}"

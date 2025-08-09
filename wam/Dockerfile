@@ -7,7 +7,7 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-COPY db db
+COPY logger logger
 COPY wam wam
 
 RUN cd wam && CGO_ENABLED=0 go build \

@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ACES-EU/workload-actions-manager/db"
+	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
 	"time"
@@ -81,39 +80,7 @@ func (as *ActionService) removeSchedulingSuggestion(queue string, sug *Schedulin
 	return nil
 }
 
-func (as *ActionService) CreateHandler(id uuid.UUID, actionType db.ActionTypeEnum, args *CreateArgs) (*SchedulingSuggestion, error) {
-	// todo: if swap action, fetch existing log
-
-	var wa db.WorkloadAction
-	var err error
-	if actionType == db.ActionTypeEnumCreate {
-		wa, err = as.db.CreateAction(context.TODO(), db.CreateActionParams{
-			ID:                  id,
-			ActionType:          actionType,
-			ActionStatus:        db.ActionStatusEnumPending,
-			ActionEndTime:       nil,
-			ActionReason:        pgtype.Text{},
-			PodParentName:       pgtype.Text{},
-			PodParentType:       pgtype.Text{},
-			PodParentUid:        nil,
-			CreatedPodName:      pgtype.Text{},
-			CreatedPodNamespace: pgtype.Text{},
-			CreatedNodeName:     pgtype.Text{},
-			DeletedPodName:      pgtype.Text{},
-			DeletedPodNamespace: pgtype.Text{},
-			DeletedNodeName:     pgtype.Text{},
-			BoundPodName:        pgtype.Text{},
-			BoundPodNamespace:   pgtype.Text{},
-			BoundNodeName:       pgtype.Text{},
-		})
-
-		if err != nil {
-			log.Printf("error initializing bind action in db: %v\n", err)
-		}
-	} else if actionType == db.ActionTypeEnumMove || actionType == db.ActionTypeEnumSwapX || actionType == db.ActionTypeEnumSwapY {
-		wa, err = as.db.GetAction(context.TODO(), id)
-	}
-
+func (as *ActionService) CreateHandler(id uuid.UUID, actionType walog.WorkloadActionTypeEnum, args *CreateArgs) (*SchedulingSuggestion, error) {
 	queue := args.Workload.QueueName()
 
 	// create queue ID
@@ -123,12 +90,15 @@ func (as *ActionService) CreateHandler(id uuid.UUID, actionType db.ActionTypeEnu
 	if err != nil {
 		log.Println(err)
 
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return nil, err
@@ -146,12 +116,15 @@ func (as *ActionService) CreateHandler(id uuid.UUID, actionType db.ActionTypeEnu
 	if err != nil {
 		log.Println(err)
 
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		err = as.removeSchedulingSuggestion(queue, suggestion)
@@ -173,12 +146,15 @@ func (as *ActionService) CreateHandler(id uuid.UUID, actionType db.ActionTypeEnu
 	if err != nil {
 		log.Println(err)
 
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		err = as.removeSchedulingSuggestion(queue, suggestion)

@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ACES-EU/workload-actions-manager/db"
+	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/redis/go-redis/v9"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +28,7 @@ type WAM struct {
 	handle    framework.Handle
 	k8sClient *kubernetes.Clientset
 	rdb       *redis.Client
-	db        *db.Queries
+	log       *walog.WALogger
 }
 
 type SchedulingSuggestion struct {
@@ -119,28 +117,6 @@ func (w *WAM) PreFilter(ctx context.Context, state *framework.CycleState, pod *v
 	return nil, framework.NewStatus(framework.Success, "")
 }
 
-func updateActionLog(q *db.Queries, wa db.WorkloadAction) (db.WorkloadAction, error) {
-	return q.UpdateAction(context.TODO(), db.UpdateActionParams{
-		ID:                  wa.ID,
-		ActionType:          wa.ActionType,
-		ActionStatus:        wa.ActionStatus,
-		ActionEndTime:       wa.ActionEndTime,
-		ActionReason:        wa.ActionReason,
-		PodParentName:       wa.PodParentName,
-		PodParentType:       wa.PodParentType,
-		PodParentUid:        wa.PodParentUid,
-		CreatedPodName:      wa.CreatedPodName,
-		CreatedPodNamespace: wa.CreatedPodNamespace,
-		CreatedNodeName:     wa.CreatedNodeName,
-		DeletedPodName:      wa.DeletedPodName,
-		DeletedPodNamespace: wa.DeletedPodNamespace,
-		DeletedNodeName:     wa.DeletedNodeName,
-		BoundPodName:        wa.BoundPodName,
-		BoundPodNamespace:   wa.BoundPodNamespace,
-		BoundNodeName:       wa.BoundNodeName,
-	})
-}
-
 func (w *WAM) PreFilterExtensions() framework.PreFilterExtensions {
 	return nil
 }
@@ -202,29 +178,44 @@ func (w *WAM) PostBind(ctx context.Context, state *framework.CycleState, pod *v1
 		return
 	}
 
-	wa, err := w.db.GetAction(ctx, suggestion.ID)
-
 	deployment, err := w.getDeploymentName(pod)
 	if err == nil {
-		wa.PodParentType = pgtype.Text{String: deployment.Kind, Valid: true}
-		wa.PodParentName = pgtype.Text{String: deployment.Name, Valid: true}
-		depUid, err := uuid.Parse(string(deployment.UID))
-		if err == nil {
-			wa.PodParentUid = &depUid
+		depUid, _ := uuid.Parse(string(deployment.UID))
+		parentType := walog.PodParentTypeEnumDeployment
+		logTime := time.Now()
+		_, _, logErr := w.log.UpdateWorkloadAction(context.TODO(), suggestion.ID, walog.WorkloadActionUpdate{
+			PodParentType: &parentType,
+			PodParentName: &deployment.Name,
+			PodParentUID:  &depUid,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 	}
 
-	wa.CreatedPodName = pgtype.Text{String: pod.Name, Valid: true}
-	wa.CreatedPodNamespace = pgtype.Text{String: pod.Namespace, Valid: true}
-	wa.CreatedNodeName = pgtype.Text{String: nodeName, Valid: true}
-	if wa.ActionType == db.ActionTypeEnumCreate || wa.ActionType == db.ActionTypeEnumSwapX || wa.ActionType == db.ActionTypeEnumSwapY {
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa.ActionStatus = db.ActionStatusEnumSucceeded
+	logTime := time.Now()
+	wa, _, logErr := w.log.UpdateWorkloadAction(context.TODO(), suggestion.ID, walog.WorkloadActionUpdate{
+		CreatedPodName:      &pod.Name,
+		CreatedPodNamespace: &pod.Namespace,
+		CreatedNodeName:     &nodeName,
+		UpdatedAt:           &logTime,
+	})
+	if logErr != nil {
+		log.Printf("error updating action log: %v\n", logErr)
 	}
-	wa, err = updateActionLog(w.db, wa)
-	if err != nil {
-		lh.V(5).Info(fmt.Sprintf("error updating action log: %v", err))
+
+	if wa.ActionType == walog.WorkloadActionTypeEnumCreate || wa.ActionType == walog.WorkloadActionTypeEnumSwapX || wa.ActionType == walog.WorkloadActionTypeEnumSwapY {
+		status := walog.WorkloadActionStatusEnumSucceeded
+		logTime := time.Now()
+		_, _, logErr := w.log.UpdateWorkloadAction(context.TODO(), suggestion.ID, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
+		}
 	}
 
 	lh.V(5).Info(fmt.Sprintf("added suggestion %+v as `example.com/scheduling-suggestion` annotation to %s", suggestion, pod.Name))
@@ -262,30 +253,17 @@ func New(ctx context.Context, args runtime.Object, h framework.Handle) (framewor
 		log.Fatal("error connecting to Redis")
 	}
 
-	postgresUser := os.Getenv("WAM_POSTGRES_USER")
-	postgresPassword := os.Getenv("WAM_POSTGRES_PASSWORD")
-	postgresHost := os.Getenv("WAM_POSTGRES_HOST")
-	postgresPort := os.Getenv("WAM_POSTGRES_PORT")
-	postgresDb := os.Getenv("WAM_POSTGRES_DB")
+	waLoggerScheme := os.Getenv("WALOGGER_SCHEME")
+	waLoggerHost := os.Getenv("WALOGGER_HOST")
 
-	conn, err := pgx.Connect(ctx, fmt.Sprintf("postgres://%s:%s@%s:%s/%s", postgresUser, postgresPassword, postgresHost, postgresPort, postgresDb))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = conn.Ping(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	database := db.New(conn)
+	waLogger := walog.NewWALogger(waLoggerScheme, waLoggerHost)
 
 	lh.V(5).Info("creating a new WAM plugin")
 
 	return &WAM{
 		handle:    h,
 		rdb:       rdb,
-		db:        database,
+		log:       waLogger,
 		k8sClient: k8sClient,
 	}, nil
 }

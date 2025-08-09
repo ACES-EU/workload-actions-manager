@@ -3,9 +3,8 @@ package actions
 import (
 	"context"
 	"fmt"
-	"github.com/ACES-EU/workload-actions-manager/db"
+	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,41 +92,21 @@ func isPodReady(pod *corev1.Pod) bool {
 	return false
 }
 
-func (as *ActionService) MoveHandler(id uuid.UUID, actionType db.ActionTypeEnum, args *MoveArgs) {
-	wa, err := as.db.CreateAction(context.TODO(), db.CreateActionParams{
-		ID:                  id,
-		ActionType:          actionType,
-		ActionStatus:        db.ActionStatusEnumPending,
-		ActionEndTime:       nil,
-		ActionReason:        pgtype.Text{},
-		PodParentName:       pgtype.Text{},
-		PodParentType:       pgtype.Text{},
-		PodParentUid:        nil,
-		CreatedPodName:      pgtype.Text{},
-		CreatedPodNamespace: pgtype.Text{},
-		CreatedNodeName:     pgtype.Text{},
-		DeletedPodName:      pgtype.Text{String: args.Pod.Name, Valid: true},
-		DeletedPodNamespace: pgtype.Text{String: args.Pod.Namespace, Valid: true},
-		DeletedNodeName:     pgtype.Text{},
-		BoundPodName:        pgtype.Text{},
-		BoundPodNamespace:   pgtype.Text{},
-		BoundNodeName:       pgtype.Text{},
-	})
-
-	if err != nil {
-		log.Printf("error initializing bind action in db: %v\n", err)
-	}
+func (as *ActionService) MoveHandler(id uuid.UUID, actionType walog.WorkloadActionTypeEnum, args *MoveArgs) {
 
 	createArgs, err := args.toCreateArgs(as.k8sClient)
 	if err != nil {
 		log.Printf("%s: move action failed at determining the workload of %s\n", err.Error(), args.Pod.Name)
 
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
@@ -137,17 +116,15 @@ func (as *ActionService) MoveHandler(id uuid.UUID, actionType db.ActionTypeEnum,
 	if err != nil {
 		log.Printf("move action failed at create step: %s\n", err.Error())
 
-		wa, err := as.db.GetAction(context.TODO(), id)
-		if err != nil {
-			return
-		}
-
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
@@ -160,17 +137,15 @@ func (as *ActionService) MoveHandler(id uuid.UUID, actionType db.ActionTypeEnum,
 	if err != nil {
 		log.Printf("move action failed at wait step: %s\n", err.Error())
 
-		wa, err := as.db.GetAction(context.TODO(), id)
-		if err != nil {
-			return
-		}
-
-		wa.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		wa.ActionEndTime = &endTime
-		wa, err = updateActionLog(as.db, wa)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return

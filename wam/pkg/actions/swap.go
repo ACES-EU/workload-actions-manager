@@ -3,9 +3,8 @@ package actions
 import (
 	"context"
 	"fmt"
-	"github.com/ACES-EU/workload-actions-manager/db"
+	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"log"
@@ -51,73 +50,29 @@ type TargetScaleKey struct {
 }
 
 func (as *ActionService) SwapHandler(idX uuid.UUID, idY uuid.UUID, args *SwapArgs) {
-	startTime := time.Now()
-
-	waX, err := as.db.CreateActionStartTime(context.TODO(), db.CreateActionStartTimeParams{
-		ID:                  idX,
-		ActionType:          db.ActionTypeEnumSwapX,
-		ActionStatus:        db.ActionStatusEnumPending,
-		ActionStartTime:     &startTime,
-		ActionEndTime:       nil,
-		ActionReason:        pgtype.Text{},
-		PodParentName:       pgtype.Text{},
-		PodParentType:       pgtype.Text{},
-		PodParentUid:        nil,
-		CreatedPodName:      pgtype.Text{},
-		CreatedPodNamespace: pgtype.Text{},
-		CreatedNodeName:     pgtype.Text{},
-		DeletedPodName:      pgtype.Text{},
-		DeletedPodNamespace: pgtype.Text{},
-		DeletedNodeName:     pgtype.Text{},
-		BoundPodName:        pgtype.Text{},
-		BoundPodNamespace:   pgtype.Text{},
-		BoundNodeName:       pgtype.Text{},
-	})
-	if err != nil {
-		log.Printf("error initializing action in db: %v\n", err)
-	}
-
-	waY, err := as.db.CreateActionStartTime(context.TODO(), db.CreateActionStartTimeParams{
-		ID:                  idY,
-		ActionType:          db.ActionTypeEnumSwapY,
-		ActionStatus:        db.ActionStatusEnumPending,
-		ActionStartTime:     &startTime,
-		ActionEndTime:       nil,
-		ActionReason:        pgtype.Text{},
-		PodParentName:       pgtype.Text{},
-		PodParentType:       pgtype.Text{},
-		PodParentUid:        nil,
-		CreatedPodName:      pgtype.Text{},
-		CreatedPodNamespace: pgtype.Text{},
-		CreatedNodeName:     pgtype.Text{},
-		DeletedPodName:      pgtype.Text{},
-		DeletedPodNamespace: pgtype.Text{},
-		DeletedNodeName:     pgtype.Text{},
-		BoundPodName:        pgtype.Text{},
-		BoundPodNamespace:   pgtype.Text{},
-		BoundNodeName:       pgtype.Text{},
-	})
-	if err != nil {
-		log.Printf("error initializing action in db: %v\n", err)
-	}
-
 	podX, err := as.k8sClient.CoreV1().Pods(args.X.Namespace).Get(context.TODO(), args.X.Name, metav1.GetOptions{})
 	if err != nil {
 		log.Printf("error getting pod X: %v\n", err)
 
-		waX.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		waX.ActionEndTime = &endTime
-		waX, err = updateActionLog(as.db, waX)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), idX, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
-		waY.ActionStatus = db.ActionStatusEnumFailed
-		waY.ActionEndTime = &endTime
-		waY, err = updateActionLog(as.db, waY)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		_, _, logErr = as.log.UpdateWorkloadAction(context.TODO(), idY, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
@@ -127,19 +82,25 @@ func (as *ActionService) SwapHandler(idX uuid.UUID, idY uuid.UUID, args *SwapArg
 	if err != nil {
 		log.Printf("error getting pod X: %v\n", err)
 
-		waX.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		waX.ActionEndTime = &endTime
-		waX, err = updateActionLog(as.db, waX)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), idX, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
-		waY.ActionStatus = db.ActionStatusEnumFailed
-		waY.ActionEndTime = &endTime
-		waY, err = updateActionLog(as.db, waY)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		_, _, logErr = as.log.UpdateWorkloadAction(context.TODO(), idY, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
@@ -152,19 +113,25 @@ func (as *ActionService) SwapHandler(idX uuid.UUID, idY uuid.UUID, args *SwapArg
 	if err != nil {
 		log.Printf("error creating create args: %s", err.Error())
 
-		waX.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		waX.ActionEndTime = &endTime
-		waX, err = updateActionLog(as.db, waX)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), idX, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
-		waY.ActionStatus = db.ActionStatusEnumFailed
-		waY.ActionEndTime = &endTime
-		waY, err = updateActionLog(as.db, waY)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		_, _, logErr = as.log.UpdateWorkloadAction(context.TODO(), idY, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
@@ -173,26 +140,32 @@ func (as *ActionService) SwapHandler(idX uuid.UUID, idY uuid.UUID, args *SwapArg
 	if err != nil {
 		log.Printf("error creating create args: %s", err.Error())
 
-		waX.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		waX.ActionEndTime = &endTime
-		waX, err = updateActionLog(as.db, waX)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
+
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), idX, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
-		waY.ActionStatus = db.ActionStatusEnumFailed
-		waY.ActionEndTime = &endTime
-		waY, err = updateActionLog(as.db, waY)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		_, _, logErr = as.log.UpdateWorkloadAction(context.TODO(), idY, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 
 		return
 	}
 
-	as.DeleteHandler(idX, db.ActionTypeEnumSwapX, deleteArgsX)
-	as.DeleteHandler(idY, db.ActionTypeEnumSwapY, deleteArgsY)
+	as.DeleteHandler(idX, walog.WorkloadActionTypeEnumSwapX, deleteArgsX)
+	as.DeleteHandler(idY, walog.WorkloadActionTypeEnumSwapY, deleteArgsY)
 
 	log.Printf("all deletes have completed")
 
@@ -200,38 +173,32 @@ func (as *ActionService) SwapHandler(idX uuid.UUID, idY uuid.UUID, args *SwapArg
 	// until they're finally scheduled where they're supposed to go. That's ok.
 
 	log.Printf("continuing with creates")
-	_, err = as.CreateHandler(idX, db.ActionTypeEnumSwapX, createArgsX)
+	_, err = as.CreateHandler(idX, walog.WorkloadActionTypeEnumSwapX, createArgsX)
 	if err != nil {
-		waX.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		waX.ActionEndTime = &endTime
-		waX, err = updateActionLog(as.db, waX)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
-		}
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
 
-		waY.ActionStatus = db.ActionStatusEnumFailed
-		waY.ActionEndTime = &endTime
-		waY, err = updateActionLog(as.db, waY)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), idX, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 	}
-	_, err = as.CreateHandler(idY, db.ActionTypeEnumSwapY, createArgsY)
+	_, err = as.CreateHandler(idY, walog.WorkloadActionTypeEnumSwapY, createArgsY)
 	if err != nil {
-		waX.ActionStatus = db.ActionStatusEnumFailed
-		endTime := time.Now()
-		waX.ActionEndTime = &endTime
-		waX, err = updateActionLog(as.db, waX)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
-		}
+		status := walog.WorkloadActionStatusEnumFailed
+		logTime := time.Now()
 
-		waY.ActionStatus = db.ActionStatusEnumFailed
-		waY.ActionEndTime = &endTime
-		waY, err = updateActionLog(as.db, waY)
-		if err != nil {
-			log.Printf("error updating action in db: %v\n", err)
+		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), idY, walog.WorkloadActionUpdate{
+			ActionStatus:  &status,
+			ActionEndTime: &logTime,
+			UpdatedAt:     &logTime,
+		})
+		if logErr != nil {
+			log.Printf("error updating action log: %v\n", logErr)
 		}
 	}
 
