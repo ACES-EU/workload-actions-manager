@@ -27,7 +27,7 @@ jobs:
         run: |
           IMAGE_NAME=ghcr.io/${{ github.repository }}/wam
           IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
-          docker build -t $IMAGE_NAME:latest wam
+          docker build -t $IMAGE_NAME:latest -f wam/Dockerfile .
           docker tag $IMAGE_NAME:latest $IMAGE_NAME:${{ github.sha }}
 
       - name: Push WAM image
