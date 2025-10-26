@@ -2,12 +2,13 @@ package actions
 
 import (
 	"context"
-	walog "github.com/ACES-EU/workload-actions-manager/logger"
-	"github.com/redis/go-redis/v9"
-	clientset "k8s.io/client-go/kubernetes"
 	"log"
 	"net/http"
 	"time"
+
+	walog "github.com/ACES-EU/workload-actions-manager/logger"
+	"github.com/redis/go-redis/v9"
+	clientset "k8s.io/client-go/kubernetes"
 )
 
 type ActionService struct {
@@ -80,7 +81,7 @@ func (as *ActionService) Create(r *http.Request, args *CreateArgs, reply *Create
 
 	// todo: Think about a worker pool here
 	go func() {
-		_, _ = as.CreateHandler(wa.ID, wa.ActionType, args)
+		_, _ = as.CreateHandler(wa.ID, walog.WorkloadActionTypeEnumCreate, args)
 	}()
 	log.Println("spawning a handler")
 
@@ -112,7 +113,7 @@ func (as *ActionService) Delete(r *http.Request, args *DeleteArgs, reply *Delete
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
-	go as.DeleteHandler(wa.ID, wa.ActionType, args)
+	go as.DeleteHandler(wa.ID, walog.WorkloadActionTypeEnumDelete, args)
 	log.Println("spawning a handler")
 
 	log.Println("returning to the caller that the request has been accepted")
@@ -143,7 +144,7 @@ func (as *ActionService) Move(r *http.Request, args *MoveArgs, reply *MoveReply)
 	reply.Message = "ok"
 
 	// todo: Think about a worker pool here
-	go as.MoveHandler(wa.ID, wa.ActionType, args)
+	go as.MoveHandler(wa.ID, walog.WorkloadActionTypeEnumMove, args)
 	log.Println("spawning a handler")
 
 	log.Println("returning to the caller that the request has been accepted")

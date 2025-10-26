@@ -124,6 +124,14 @@ type WorkloadActionUpdate struct {
 	UpdatedAt           *time.Time                `json:"updated_at,omitempty"`
 }
 
+type WorkloadDecisionStatusUpdate struct {
+	PodName        string                   `json:"pod_name"`
+	Namespace      string                   `json:"namespace"`
+	NodeName       string                   `json:"node_name"`
+	ActionType     WorkloadActionTypeEnum   `json:"action_type"`
+	DecisionStatus WorkloadActionStatusEnum `json:"decision_status"`
+}
+
 // ValidationError is a schema for a validation error.
 type ValidationError struct {
 	Loc  []interface{} `json:"loc"`
@@ -374,8 +382,24 @@ func (c *WALogger) DeleteWorkloadAction(ctx context.Context, actionID uuid.UUID)
 	return resp, nil
 }
 
+func (c *WALogger) UpdateWorkloadDecisionStatus(ctx context.Context, body WorkloadDecisionStatusUpdate) (*http.Response, error) {
+	path := "/workload_request_decision/status"
+	req, err := c.NewRequest(http.MethodPut, path, body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result WorkloadAction
+	resp, err := c.Do(ctx, req, &result)
+	if err != nil {
+		return resp, err
+	}
+
+	return resp, nil
+}
+
 //func main() {
-//	c := NewClient()
+//	c := NewWALogger("http", "51.44.28.47:30015")
 //	res, _, err := c.GetAllWorkloadActions(context.Background(), nil)
 //	if err != nil {
 //		fmt.Println(err)

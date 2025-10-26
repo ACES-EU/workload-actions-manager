@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"time"
+
 	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
-	"time"
 )
 
 func validateBindReq(args *BindArgs) error {
@@ -87,6 +88,16 @@ func (as *ActionService) BindHandler(id uuid.UUID, args *BindArgs) error {
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
 		}
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       args.Node.Name,
+			ActionType:     walog.WorkloadActionTypeEnumBind,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
+		}
 
 		return errors.New("pod cannot be bound since it is not in pending state")
 	}
@@ -101,6 +112,16 @@ func (as *ActionService) BindHandler(id uuid.UUID, args *BindArgs) error {
 		})
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
+		}
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       args.Node.Name,
+			ActionType:     walog.WorkloadActionTypeEnumBind,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
 		}
 		return errors.New("pod cannot be bound since it has nodeName set")
 	}
@@ -131,6 +152,16 @@ func (as *ActionService) BindHandler(id uuid.UUID, args *BindArgs) error {
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
 		}
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       args.Node.Name,
+			ActionType:     walog.WorkloadActionTypeEnumBind,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
+		}
 
 		return fmt.Errorf("failed to bind Pod %s to Node %s: %w", pod.Name, args.Node.Name, err)
 	}
@@ -145,6 +176,16 @@ func (as *ActionService) BindHandler(id uuid.UUID, args *BindArgs) error {
 	})
 	if logErr != nil {
 		log.Printf("error updating action log: %v\n", logErr)
+	}
+	_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+		PodName:        pod.Name,
+		Namespace:      pod.Namespace,
+		NodeName:       args.Node.Name,
+		ActionType:     walog.WorkloadActionTypeEnumBind,
+		DecisionStatus: status,
+	})
+	if logErr != nil {
+		log.Printf("error updating decision status log: %v\n", logErr)
 	}
 
 	log.Printf("Pod %s successfully bound to Node %s.\n", pod.Name, args.Node.Name)

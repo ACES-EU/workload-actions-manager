@@ -3,12 +3,13 @@ package actions
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
 	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"log"
-	"time"
 )
 
 func (p *Pod) toDeleteArgs() *DeleteArgs {
@@ -166,6 +167,8 @@ func (as *ActionService) SwapHandler(idX uuid.UUID, idY uuid.UUID, args *SwapArg
 
 	as.DeleteHandler(idX, walog.WorkloadActionTypeEnumSwapX, deleteArgsX)
 	as.DeleteHandler(idY, walog.WorkloadActionTypeEnumSwapY, deleteArgsY)
+
+	time.Sleep(5 * time.Second) // hack to wait for deletes (prober way would be to watch to reach desired replicas)
 
 	log.Printf("all deletes have completed")
 

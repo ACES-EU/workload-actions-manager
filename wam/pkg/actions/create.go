@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"time"
+
 	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
-	"time"
 )
 
 func (w Workload) QueueName() string {
@@ -39,10 +40,11 @@ func validateCreateReq(args *CreateArgs) error {
 	return nil
 }
 
-func (as *ActionService) addSchedulingSuggestion(id uuid.UUID, queue string, nodeName string) (*SchedulingSuggestion, error) {
+func (as *ActionService) addSchedulingSuggestion(id uuid.UUID, queue string, nodeName string, actionType walog.WorkloadActionTypeEnum) (*SchedulingSuggestion, error) {
 	sug := &SchedulingSuggestion{
-		ID:       id,
-		NodeName: nodeName,
+		ID:         id,
+		NodeName:   nodeName,
+		ActionType: actionType,
 	}
 
 	log.Printf("created scheduling suggestion %+v\n", sug)
@@ -86,7 +88,7 @@ func (as *ActionService) CreateHandler(id uuid.UUID, actionType walog.WorkloadAc
 	// create queue ID
 	log.Printf("using queue %s\n", queue)
 
-	suggestion, err := as.addSchedulingSuggestion(id, queue, args.Node.Name)
+	suggestion, err := as.addSchedulingSuggestion(id, queue, args.Node.Name, actionType)
 	if err != nil {
 		log.Println(err)
 
@@ -186,6 +188,7 @@ type CreateReply struct {
 }
 
 type SchedulingSuggestion struct {
-	ID       uuid.UUID `json:"id"`
-	NodeName string    `json:"node_name"`
+	ID         uuid.UUID                    `json:"id"`
+	NodeName   string                       `json:"node_name"`
+	ActionType walog.WorkloadActionTypeEnum `json:"action_type"`
 }

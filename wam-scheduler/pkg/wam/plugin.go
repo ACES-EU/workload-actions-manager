@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
+
 	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -18,10 +23,6 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
-	"log"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 type WAM struct {
@@ -32,14 +33,16 @@ type WAM struct {
 }
 
 type SchedulingSuggestion struct {
-	ID       uuid.UUID `json:"id"`
-	NodeName string    `json:"node_name"`
+	ID         uuid.UUID                    `json:"id"`
+	NodeName   string                       `json:"node_name"`
+	ActionType walog.WorkloadActionTypeEnum `json:"action_type"`
 }
 
 func (sg *SchedulingSuggestion) Clone() framework.StateData {
 	return &SchedulingSuggestion{
-		ID:       sg.ID,
-		NodeName: sg.NodeName,
+		ID:         sg.ID,
+		NodeName:   sg.NodeName,
+		ActionType: sg.ActionType,
 	}
 }
 
@@ -108,8 +111,9 @@ func (w *WAM) PreFilter(ctx context.Context, state *framework.CycleState, pod *v
 	}
 
 	state.Write(schedulingSuggestionKey, &SchedulingSuggestion{
-		ID:       suggestion.ID,
-		NodeName: suggestion.NodeName,
+		ID:         suggestion.ID,
+		NodeName:   suggestion.NodeName,
+		ActionType: suggestion.ActionType,
 	})
 
 	lh.V(5).Info(fmt.Sprintf("adding suggestion %+v to cycle state", suggestion))
@@ -215,6 +219,18 @@ func (w *WAM) PostBind(ctx context.Context, state *framework.CycleState, pod *v1
 		})
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
+		}
+		h := walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       nodeName,
+			ActionType:     suggestion.ActionType,
+			DecisionStatus: status,
+		}
+		fmt.Printf("%+v\n", h)
+		_, logErr = w.log.UpdateWorkloadDecisionStatus(context.TODO(), h)
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
 		}
 	}
 

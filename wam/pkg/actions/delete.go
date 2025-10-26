@@ -3,11 +3,12 @@ package actions
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
 	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
-	"time"
 )
 
 func validateDeleteReq(args *DeleteArgs) error {
@@ -66,6 +67,16 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType walog.WorkloadAc
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
 		}
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       pod.Spec.NodeName,
+			ActionType:     actionType,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
+		}
 
 		return
 	}
@@ -105,6 +116,16 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType walog.WorkloadAc
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
 		}
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       pod.Spec.NodeName,
+			ActionType:     actionType,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
+		}
 
 		return
 	}
@@ -125,6 +146,16 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType walog.WorkloadAc
 		})
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
+		}
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       pod.Spec.NodeName,
+			ActionType:     actionType,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
 		}
 
 		return
@@ -151,6 +182,16 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType walog.WorkloadAc
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
 		}
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       pod.Spec.NodeName,
+			ActionType:     actionType,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
+		}
 
 		return
 	}
@@ -171,6 +212,17 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType walog.WorkloadAc
 		})
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
+		}
+
+		_, logErr = as.log.UpdateWorkloadDecisionStatus(context.TODO(), walog.WorkloadDecisionStatusUpdate{
+			PodName:        pod.Name,
+			Namespace:      pod.Namespace,
+			NodeName:       pod.Spec.NodeName,
+			ActionType:     actionType,
+			DecisionStatus: status,
+		})
+		if logErr != nil {
+			log.Printf("error updating decision status log: %v\n", logErr)
 		}
 	}
 }
