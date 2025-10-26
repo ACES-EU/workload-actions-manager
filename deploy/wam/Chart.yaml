@@ -1,5 +1,5 @@
 apiVersion: v2
-name: wam
+name: wam-app
 description: Helm chart for WAM component
 
 # A chart can be either an 'application' or a 'library' chart.

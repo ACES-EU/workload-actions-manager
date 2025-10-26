@@ -1,0 +1,47 @@
+name: Hiro Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.target_branch }}
+
+      - name: Set up Kubernetes CLI (kubectl)
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: 'v3.13.0'
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.HIRO_KUBE_CONFIG_BASTON }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl get namespace ul
+
+      - name: Deploy WAM Helm charts
+        run: |
+          helm upgrade --install --namespace ul --create-namespace wam-redis deploy/redis
+          
+          kubectl wait --for=condition=Ready pod/wam-redis-master-0 -n ul --timeout=300s
+          
+          helm upgrade --install wam-scheduler ./deploy/wam-scheduler --namespace ul --values ./deploy/wam-scheduler/values.hiro.yaml
+          
+          helm upgrade --install wam-app ./deploy/wam --namespace ul --values ./deploy/wam/values.hiro.yaml
+          
+          echo "Send workload actions to:"
+          echo "http://wam-app.ul.svc.cluster.local:3030"
+          
+          echo "WAM deployed in ul namespace"
+
