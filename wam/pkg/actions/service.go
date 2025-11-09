@@ -77,6 +77,26 @@ func (as *ActionService) UpdateResources(r *http.Request, args *UpdateResourcesA
 	return nil
 }
 
+func (as *ActionService) Scale(r *http.Request, args *ScalesArgs, reply *ScaleReply) error {
+	err := validateScaleReq(args)
+	if err != nil {
+		return err
+	}
+
+	log.Println("update scale action called")
+
+	// todo: logging
+	uuid, _ := uuid2.NewUUID()
+
+	reply.Message = "ok"
+	err = as.ScaleHandler(uuid, args)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (as *ActionService) Create(r *http.Request, args *CreateArgs, reply *CreateReply) error {
 	err := validateCreateReq(args)
 	if err != nil {

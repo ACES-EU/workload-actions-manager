@@ -73,6 +73,8 @@ kubectl port-forward svc/wam-app 3030:3030
 ## Examples
 
 ```bash
+#### action.Create
+
 # create a replica of A on node 7
 curl -X POST -H "Content-Type: application/json" \
   -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-7"}}], "id":"1"}' \
@@ -83,12 +85,16 @@ curl -X POST -H "Content-Type: application/json" \
   -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
   http://localhost:3030/rpc
 
+#### action.Delete
+
 # delete a replica of A on node 7
 export pod_to_delete=$(kubectl get pods -l 'app.kubernetes.io/name=test-a' -n ul -o wide | grep 'k3d-aces-agent-7' | awk '{print $1}' | head -n 1)
 echo "$pod_to_delete"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Delete\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$pod_to_delete\"}}], \"id\":\"1\"}" \
   http://localhost:3030/rpc
+
+#### action.Move
 
 # move a replica of A from node 4 to node 7
 export pod_to_move=$(kubectl get pods -l 'app.kubernetes.io/name=test-a' -n ul -o wide | grep 'k3d-aces-agent-4' | awk '{print $1}' | head -n 1)
@@ -97,6 +103,8 @@ curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Move\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$pod_to_move\"}, \"node\": {\"name\": \"k3d-aces-agent-7\"}}], \"id\":\"1\"}" \
   http://localhost:3030/rpc
   
+#### action.Swap
+
 # create a replica of B on node 4
 curl -X POST -H "Content-Type: application/json" \
   -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "kind": "Deployment", "name": "test-b"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
@@ -115,7 +123,9 @@ echo "$pod_to_swap_B"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Swap\",\"params\":[{\"x\": {\"namespace\": \"ul\", \"name\": \"$pod_to_swap_A\"}, \"y\": {\"namespace\": \"ul\", \"name\": \"$pod_to_swap_B\"}}], \"id\": \"1\"}" \
   http://localhost:3030/rpc
-  
+
+#### action.Bind
+
 # Deploy pods in a pending state and use bind action to schedule such pods on desired nodes.
 # Creates 2 pods in pending state
 kubectl apply -f docs/pending-deployment.yaml
@@ -132,9 +142,10 @@ curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Bind\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$pod_to_bind\"}, \"node\": {\"name\": \"k3d-aces-agent-6\"}}], \"id\":\"1\"}" \
   http://localhost:3030/rpc
   
+#### action.UpdateResources
 
 # Update resources of the deployment.
-# This action will create new pods (in pending state) with the desired resources, and delete old pods (all pods of the deployment are recreated)
+# This action will create new pods (in pending state) with the desired resources, and delete old pods (all pods of the deployment are eventually recreated).
 # Creation of new pods and deletion of old pods is performed by k8s, not by WAM. How new pods are rolled out depends on the strategy:
 # https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
 
@@ -159,7 +170,7 @@ curl -X POST -H "Content-Type: application/json" \
   -d '{"method":"action.UpdateResources","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"pending-test"},"resources":{"container_name":"example-container","cpu_request":"50m","cpu_limit":"200m"}}], "id":"1"}' \
   http://localhost:3030/rpc
   
-# See that a pending pod with new resource was created. Once that pod with resources is bound to a node (healthy), a pod with old resources is deleted.
+# See that a new pending pod with new resource was created. Once that pod with new resources is bound to a node (and is healthy), a pod with old resources is deleted.
 # This is then repeated until all pods with old resources are gone.
 
 # Let's bind pods with new resources
@@ -183,15 +194,40 @@ curl -X POST -H "Content-Type: application/json" \
   
 # All pods with new resources have been bound to nodes, and note that all the pods with old resources have been deleted.
 
+#### action.Scale
 
+# Update scale of the deployment.
+# When scaling the number of replicas up, new pods are created in pending state. Use action.Bind to place them on nodes.
+# When scaling down, some pods are deleted to reach the desired number of replicas. Which to delete, is determined by k8s.
 
+# Action expects the following data:
+# {
+#   "workload": {
+#     "namespace": "ul",
+#     "kind": "Deployment", // if this is 'Pod', its Deployment will be found and all scaled up or down
+#     "name": "test-a"
+#   },
+#   "replicas": 5
+# }
 
+# This will scale the deployment to 1.
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"method":"action.Scale","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"pending-test"}, "replicas": 1}], "id":"1"}' \
+  http://localhost:3030/rpc
 
+# Observe only one running pod.
+
+# Now let's scale up to 4 replicas.
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"method":"action.Scale","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"pending-test"}, "replicas": 4}], "id":"1"}' \
+  http://localhost:3030/rpc
+
+# Observe that one pod is running (from before) and 3 new pods have been created in pending state which should be later scheduled using action.Bind.
 ```
 
 ## Clean up
 
-``` bash
+```bash
 k3d cluster stop aces && k3d cluster delete aces
 ```
 

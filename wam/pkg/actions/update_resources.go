@@ -75,8 +75,6 @@ func (as *ActionService) UpdateResourcesHandler(id uuid.UUID, args *UpdateResour
 		},
 	}
 
-	fmt.Println(patch)
-
 	patchBytes, _ := json.Marshal(patch)
 
 	_, err := as.k8sClient.AppsV1().Deployments(namespace).Patch(

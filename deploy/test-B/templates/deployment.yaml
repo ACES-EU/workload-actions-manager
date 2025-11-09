@@ -14,7 +14,7 @@ spec:
       labels:
         {{- include "test-b.labels" . | nindent 8 }}
     spec:
-      schedulerName: wam-scheduler
+      schedulerName: wam-scheduler # must be exactly this
       containers:
         - name: test
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

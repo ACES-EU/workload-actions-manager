@@ -16,7 +16,7 @@ spec:
       labels:
         app: pending-test
     spec:
-      schedulerName: "wam-scheduler"
+      schedulerName: "wam-scheduler" # or some other scheduler
       containers:
         - name: example-container
           image: gcr.io/google_containers/pause
