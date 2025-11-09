@@ -3,14 +3,15 @@ package actions
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
 	walog "github.com/ACES-EU/workload-actions-manager/logger"
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"log"
-	"time"
 )
 
 func (ma *MoveArgs) toCreateArgs(k8sClient *clientset.Clientset) (*CreateArgs, error) {
@@ -26,10 +27,9 @@ func (ma *MoveArgs) toCreateArgs(k8sClient *clientset.Clientset) (*CreateArgs, e
 
 	return &CreateArgs{
 		Workload: Workload{
-			Namespace:  ma.Pod.Namespace,
-			APIVersion: deployment.APIVersion,
-			Kind:       deployment.Kind,
-			Name:       deployment.Name,
+			Namespace: ma.Pod.Namespace,
+			Kind:      deployment.Kind,
+			Name:      deployment.Name,
 		},
 		Node: ma.Node,
 	}, nil

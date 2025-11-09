@@ -7,6 +7,7 @@ import (
 	"time"
 
 	walog "github.com/ACES-EU/workload-actions-manager/logger"
+	uuid2 "github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	clientset "k8s.io/client-go/kubernetes"
 )
@@ -49,6 +50,26 @@ func (as *ActionService) Bind(r *http.Request, args *BindArgs, reply *BindReply)
 
 	reply.Message = "ok"
 	err = as.BindHandler(wa.ID, args)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (as *ActionService) UpdateResources(r *http.Request, args *UpdateResourcesArgs, reply *UpdateResourceReply) error {
+	err := validateUpdateResourcesReq(args)
+	if err != nil {
+		return err
+	}
+
+	log.Println("update resources action called")
+
+	// todo: logging
+	uuid, _ := uuid2.NewUUID()
+
+	reply.Message = "ok"
+	err = as.UpdateResourcesHandler(uuid, args)
 	if err != nil {
 		return err
 	}

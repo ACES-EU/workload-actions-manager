@@ -13,14 +13,10 @@ import (
 )
 
 func (w Workload) QueueName() string {
-	return fmt.Sprintf("%s:%s:%s:%s", w.Namespace, w.APIVersion, w.Kind, w.Name)
+	return fmt.Sprintf("%s:apps/v1:%s:%s", w.Namespace, w.Kind, w.Name)
 }
 
 func validateCreateReq(args *CreateArgs) error {
-	if args.Workload.APIVersion != "apps/v1" {
-		return fmt.Errorf("only apps/v1 workload API version is supported")
-	}
-
 	if args.Workload.Kind != "Deployment" {
 		return fmt.Errorf("only Deployment kind is supported")
 	}

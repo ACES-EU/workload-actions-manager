@@ -75,12 +75,12 @@ kubectl port-forward svc/wam-app 3030:3030
 ```bash
 # create a replica of A on node 7
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-7"}}], "id":"1"}' \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-7"}}], "id":"1"}' \
   http://localhost:3030/rpc
   
 # create a replica of A on node 4
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "kind": "Deployment", "name": "test-a"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
   http://localhost:3030/rpc
 
 # delete a replica of A on node 7
@@ -99,12 +99,12 @@ curl -X POST -H "Content-Type: application/json" \
   
 # create a replica of B on node 4
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-b"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "kind": "Deployment", "name": "test-b"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
   http://localhost:3030/rpc
 
 # create another replica of B on node 4
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "apiVersion": "apps/v1", "kind": "Deployment", "name": "test-b"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
+  -d '{"method":"action.Create","params":[{"workload": {"namespace": "ul", "kind": "Deployment", "name": "test-b"}, "node": {"name": "k3d-aces-agent-4"}}], "id":"1"}' \
   http://localhost:3030/rpc
 
 # swap replica of A (node 7) with replicas of B (node 4)
@@ -118,7 +118,7 @@ curl -X POST -H "Content-Type: application/json" \
   
 # Deploy pods in a pending state and use bind action to schedule such pods on desired nodes.
 # Creates 2 pods in pending state
-kubectl apply -f docs/bind-deployment.yaml
+kubectl apply -f docs/pending-deployment.yaml
 
 # Pods that are pending and have not been scheduled by wam-scheduler are candidates for scheduling
 # (nodeName is not set since wam-scheduler only handles scheduling of pods that are part of some action, such as action.Create, action.Move, ...).
@@ -131,6 +131,62 @@ echo $pod_to_bind
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Bind\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$pod_to_bind\"}, \"node\": {\"name\": \"k3d-aces-agent-6\"}}], \"id\":\"1\"}" \
   http://localhost:3030/rpc
+  
+
+# Update resources of the deployment.
+# This action will create new pods (in pending state) with the desired resources, and delete old pods (all pods of the deployment are recreated)
+# Creation of new pods and deletion of old pods is performed by k8s, not by WAM. How new pods are rolled out depends on the strategy:
+# https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+
+# Action expects the following data:
+# {
+#   "workload": { // all these fields are required
+#     "namespace": "ul",
+#     "kind": "Deployment", // if this is 'Pod', its Deployment will be found and all replicas of that deployment will be updated
+#     "name": "test-a"
+#   },
+#   "resources": {
+#     "container_name: "example-container" // required     
+#     "cpu_request": "100m", // optional, updated only if provided
+#     "cpu_limit": "200m", // optional, updated only if provided
+#     "memory_request": "500Mi", // optional, updated only if provided
+#     "memory_limit": "500Mi", // optional, updated only if provided
+#   }
+# }
+
+# This will update cpu request and cpu limits
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"method":"action.UpdateResources","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"pending-test"},"resources":{"container_name":"example-container","cpu_request":"50m","cpu_limit":"200m"}}], "id":"1"}' \
+  http://localhost:3030/rpc
+  
+# See that a pending pod with new resource was created. Once that pod with resources is bound to a node (healthy), a pod with old resources is deleted.
+# This is then repeated until all pods with old resources are gone.
+
+# Let's bind pods with new resources
+export new_resources_pod=$(kubectl get pods -n ul -lapp=$(kubectl get deployment -n ul 'pending-test' -o jsonpath='{.spec.selector.matchLabels.app}') \
+    --sort-by=.metadata.creationTimestamp \
+    -o jsonpath='{.items[-1].metadata.name}')
+echo $new_resources_pod
+
+curl -X POST -H "Content-Type: application/json" \
+  -d "{\"method\":\"action.Bind\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$new_resources_pod\"}, \"node\": {\"name\": \"k3d-aces-agent-6\"}}], \"id\":\"1\"}" \
+  http://localhost:3030/rpc
+
+export new_resources_pod2=$(kubectl get pods -n ul -lapp=$(kubectl get deployment -n ul 'pending-test' -o jsonpath='{.spec.selector.matchLabels.app}') \
+    --sort-by=.metadata.creationTimestamp \
+    -o jsonpath='{.items[-1].metadata.name}')
+echo $new_resources_pod2
+
+curl -X POST -H "Content-Type: application/json" \
+  -d "{\"method\":\"action.Bind\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$new_resources_pod2\"}, \"node\": {\"name\": \"k3d-aces-agent-6\"}}], \"id\":\"1\"}" \
+  http://localhost:3030/rpc
+  
+# All pods with new resources have been bound to nodes, and note that all the pods with old resources have been deleted.
+
+
+
+
+
 ```
 
 ## Clean up

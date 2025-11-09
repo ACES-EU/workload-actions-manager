@@ -2,21 +2,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bind-test
+  name: pending-test
   namespace: ul
   labels:
-    app: bind-test
+    app: pending-test
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: bind-test
+      app: pending-test
   template:
     metadata:
       labels:
-        app: bind-test
+        app: pending-test
     spec:
       schedulerName: "wam-scheduler"
       containers:
-        - name: bind-test
+        - name: example-container
           image: gcr.io/google_containers/pause
+          resources:
+            requests:
+              cpu: "1m"
+              memory: "128Mi"
+            limits:
+              cpu: "20m"

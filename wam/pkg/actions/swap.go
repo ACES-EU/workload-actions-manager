@@ -34,10 +34,9 @@ func (p *Pod) toCreateArgs(k8sClient *clientset.Clientset, nodeName string) (*Cr
 
 	return &CreateArgs{
 		Workload: Workload{
-			Namespace:  p.Namespace,
-			APIVersion: deployment.APIVersion,
-			Kind:       deployment.Kind,
-			Name:       deployment.Name,
+			Namespace: p.Namespace,
+			Kind:      deployment.Kind,
+			Name:      deployment.Name,
 		},
 		Node: Node{
 			Name: nodeName,

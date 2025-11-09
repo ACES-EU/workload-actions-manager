@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -27,10 +28,10 @@ func getPodsDeployment(pod *v1.Pod, k8sClient *clientset.Clientset) (*metav1.Own
 }
 
 type Workload struct {
-	Namespace  string `json:"namespace"`
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
+	Namespace  string  `json:"namespace"`
+	APIVersion *string `json:"apiVersion,omitempty"`
+	Kind       string  `json:"kind"`
+	Name       string  `json:"name"`
 }
 
 type Pod struct {
