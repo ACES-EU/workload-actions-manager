@@ -62,37 +62,82 @@ func queueName(or *metav1.OwnerReference, namespace string) string {
 	return fmt.Sprintf("%s:%s:%s:%s", namespace, or.APIVersion, or.Kind, or.Name)
 }
 
-func (w *WAM) getDeploymentName(pod *v1.Pod) (*metav1.OwnerReference, error) {
-	for _, ownerRef := range pod.OwnerReferences {
-		if ownerRef.Kind == "ReplicaSet" {
-			rs, err := w.k8sClient.AppsV1().ReplicaSets(pod.Namespace).Get(context.TODO(), ownerRef.Name, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
+func (w *WAM) getPodOwner(pod *v1.Pod) (*metav1.OwnerReference, error) {
+	obj := metav1.Object(pod)
+	owner := metav1.GetControllerOf(obj)
 
-			for _, rsOwnerRef := range rs.OwnerReferences {
-				if rsOwnerRef.Kind == "Deployment" {
-					return &rsOwnerRef, nil
-				}
-			}
-		}
+	if owner == nil {
+		return &metav1.OwnerReference{}, fmt.Errorf("no owner of pod: %s found", pod.Name)
 	}
 
-	return nil, fmt.Errorf("deployment not found for pod %s", pod.Name)
+	for {
+		var parent metav1.Object
+		var err error
+
+		namespace := obj.GetNamespace()
+
+		switch owner.Kind {
+		case "ReplicaSet":
+			parent, err = w.k8sClient.AppsV1().ReplicaSets(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		case "StatefulSet":
+			parent, err = w.k8sClient.AppsV1().StatefulSets(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		case "DaemonSet":
+			parent, err = w.k8sClient.AppsV1().DaemonSets(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		case "Job":
+			parent, err = w.k8sClient.BatchV1().Jobs(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		case "Deployment":
+			parent, err = w.k8sClient.AppsV1().Deployments(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		case "CronJob":
+			parent, err = w.k8sClient.BatchV1().CronJobs(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		default:
+			return owner, nil
+		}
+
+		if err != nil {
+			return owner, fmt.Errorf("failed to get owner %s %s: %w", owner.Kind, owner.Name, err)
+		}
+
+		nextOwner := metav1.GetControllerOf(parent)
+		if nextOwner == nil {
+			return owner, nil
+		}
+
+		obj = parent
+		owner = nextOwner
+	}
+}
+
+func k8sKindToParentType(kind string) (walog.PodParentTypeEnum, error) {
+	switch kind {
+	case "ReplicaSet":
+		return walog.PodParentTypeEnumReplicaset, nil
+	case "StatefulSet":
+		return walog.PodParentTypeEnumStatefulset, nil
+	case "DaemonSet":
+		return walog.PodParentTypeEnumDaemonset, nil
+	case "Job":
+		return walog.PodParentTypeEnumJob, nil
+	case "CronJob":
+		return walog.PodParentTypeEnumCronjob, nil
+	case "Deployment":
+		return walog.PodParentTypeEnumDeployment, nil
+	default:
+		return "", fmt.Errorf("unknown kind: %s", kind)
+	}
 }
 
 func (w *WAM) PreFilter(ctx context.Context, state *framework.CycleState, pod *v1.Pod) (*framework.PreFilterResult, *framework.Status) {
 	lh := klog.FromContext(ctx)
 
-	deployment, err := w.getDeploymentName(pod)
+	owner, err := w.getPodOwner(pod)
 	if err != nil {
-		lh.V(3).Error(err, "pod's deployment not found")
+		lh.V(3).Error(err, "pod's owner not found")
 		return nil, nil
 	}
 
-	lh.V(5).Info(fmt.Sprintf("found pod's deployment %+v", deployment))
+	lh.V(5).Info(fmt.Sprintf("found pod's owner %+v", owner))
 
-	queue := queueName(deployment, pod.Namespace)
+	queue := queueName(owner, pod.Namespace)
 
 	sugEncoded, err := w.rdb.LPop(context.TODO(), queue).Result()
 	if errors.Is(err, redis.Nil) {
@@ -182,14 +227,14 @@ func (w *WAM) PostBind(ctx context.Context, state *framework.CycleState, pod *v1
 		return
 	}
 
-	deployment, err := w.getDeploymentName(pod)
+	owner, err := w.getPodOwner(pod)
 	if err == nil {
-		depUid, _ := uuid.Parse(string(deployment.UID))
-		parentType := walog.PodParentTypeEnumDeployment
+		depUid := string(owner.UID)
+		parentType, _ := k8sKindToParentType(owner.Kind)
 		logTime := time.Now()
 		_, _, logErr := w.log.UpdateWorkloadAction(context.TODO(), suggestion.ID, walog.WorkloadActionUpdate{
 			PodParentType: &parentType,
-			PodParentName: &deployment.Name,
+			PodParentName: &owner.Name,
 			PodParentUID:  &depUid,
 			UpdatedAt:     &logTime,
 		})

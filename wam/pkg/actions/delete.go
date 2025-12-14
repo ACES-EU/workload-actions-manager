@@ -81,7 +81,7 @@ func (as *ActionService) DeleteHandler(id uuid.UUID, actionType walog.WorkloadAc
 		return
 	}
 
-	depUid, _ := uuid.Parse(string(deployment.UID))
+	depUid := string(deployment.UID)
 
 	logTime = time.Now()
 	parentType := walog.PodParentTypeEnumDeployment
