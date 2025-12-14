@@ -67,6 +67,9 @@ helm install --namespace ul wam-scheduler deploy/wam-scheduler
 helm install --namespace ul wam-app deploy/wam
 helm install --namespace ul test-a deploy/test-a
 helm install --namespace ul test-b deploy/test-b
+helm install --namespace ul test-c deploy/test-c
+kubectl apply -f docs/pending-deployment.yaml
+kubectl apply -f docs/scheduled-deployment.yaml
 kubectl port-forward svc/wam-app 3030:3030
 ```
 
@@ -126,22 +129,29 @@ curl -X POST -H "Content-Type: application/json" \
 
 #### action.Bind
 
-# Deploy pods in a pending state and use bind action to schedule such pods on desired nodes.
-# Creates 2 pods in pending state
-kubectl apply -f docs/pending-deployment.yaml
+# Note that pods of test-c StatefulSet are in pending state.
 
 # Pods that are pending and have not been scheduled by wam-scheduler are candidates for scheduling
 # (nodeName is not set since wam-scheduler only handles scheduling of pods that are part of some action, such as action.Create, action.Move, ...).
 
 # Fetch one such pending pod
-export pod_to_bind=$(kubectl get events -n ul --field-selector reason=FailedScheduling,involvedObject.kind=Pod --sort-by='.lastTimestamp' -o json | jq -r '.items[] | select(.reason = "FailedScheduling") | .involvedObject.name' | sort | uniq | head -1)
+export pod_to_bind="test-c-0"
 echo $pod_to_bind
 
 # For example, bind such pod to node 6.
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Bind\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$pod_to_bind\"}, \"node\": {\"name\": \"k3d-aces-agent-6\"}}], \"id\":\"1\"}" \
   http://localhost:3030/rpc
-  
+
+#### action.Redeploy
+# Similar as action.Delete, however it only terminates the pod without affecting the number of replicas.
+# Kubernetes controller will then create a new pod that can be scheduled again with action.Bind or by default scheduler.
+
+export pod_to_redeploy="test-c-0"
+curl -X POST -H "Content-Type: application/json" \
+  -d "{\"method\":\"action.Redeploy\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$pod_to_redeploy\"}}], \"id\":\"1\"}" \
+  http://localhost:3030/rpc
+
 #### action.UpdateResources
 
 # Update resources of the deployment.
@@ -212,14 +222,14 @@ curl -X POST -H "Content-Type: application/json" \
 
 # This will scale the deployment to 1.
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Scale","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"pending-test"}, "replicas": 1}], "id":"1"}' \
+  -d '{"method":"action.Scale","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"scheduled-test"}, "replicas": 1}], "id":"1"}' \
   http://localhost:3030/rpc
 
 # Observe only one running pod.
 
 # Now let's scale up to 4 replicas.
 curl -X POST -H "Content-Type: application/json" \
-  -d '{"method":"action.Scale","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"pending-test"}, "replicas": 4}], "id":"1"}' \
+  -d '{"method":"action.Scale","params":[{"workload":{"namespace":"ul","kind":"Deployment","name":"scheduled-test"}, "replicas": 4}], "id":"1"}' \
   http://localhost:3030/rpc
 
 # Observe that one pod is running (from before) and 3 new pods have been created in pending state which should be later scheduled using action.Bind.

@@ -14,6 +14,5 @@ redis:
   password: "redis_test_password"
 
 waLogger:
-  scheme: "http"
-  host: "51.44.28.47:30015"
-
+  scheme: "https"
+  host: "orchestration-api.aces.hiro-develop.nl"

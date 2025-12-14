@@ -56,16 +56,13 @@ func (as *ActionService) BindHandler(id uuid.UUID, args *BindArgs) error {
 		log.Printf("error updating action log: %v\n", logErr)
 	}
 
-	dep, err := getPodsDeployment(pod, as.k8sClient)
+	owner, err := GetPodOwner(pod, as.k8sClient)
 	if err == nil {
-		depUid, _ := uuid.Parse(string(dep.UID))
-		depType := walog.PodParentTypeEnumDeployment
-
 		logTime := time.Now()
 		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
-			PodParentUID:  &depUid,
-			PodParentType: &depType,
-			PodParentName: &dep.Name,
+			PodParentUID:  &owner.UID,
+			PodParentType: &owner.Type,
+			PodParentName: &owner.Name,
 			UpdatedAt:     &logTime,
 		})
 		if logErr != nil {
@@ -73,7 +70,7 @@ func (as *ActionService) BindHandler(id uuid.UUID, args *BindArgs) error {
 		}
 
 	} else {
-		fmt.Printf("could not find deployment for pod, not logging this info to db: %v\n", err)
+		fmt.Printf("could not find owner for pod, not logging this info to db: %v\n", err)
 	}
 
 	if pod.Status.Phase != corev1.PodPending {

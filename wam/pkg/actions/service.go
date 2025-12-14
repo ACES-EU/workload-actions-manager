@@ -69,10 +69,10 @@ func (as *ActionService) UpdateResources(r *http.Request, args *UpdateResourcesA
 	uuid, _ := uuid2.NewUUID()
 
 	reply.Message = "ok"
-	err = as.UpdateResourcesHandler(uuid, args)
-	if err != nil {
-		return err
-	}
+	go as.UpdateResourcesHandler(uuid, args)
+	log.Println("spawning a handler")
+
+	log.Println("returning to the caller that the request has been accepted")
 
 	return nil
 }
@@ -85,14 +85,11 @@ func (as *ActionService) Scale(r *http.Request, args *ScalesArgs, reply *ScaleRe
 
 	log.Println("update scale action called")
 
-	// todo: logging
-	uuid, _ := uuid2.NewUUID()
-
 	reply.Message = "ok"
-	err = as.ScaleHandler(uuid, args)
-	if err != nil {
-		return err
-	}
+	go as.ScaleHandler(args)
+
+	log.Println("spawning a handler")
+	log.Println("returning to the caller that the request has been accepted")
 
 	return nil
 }
@@ -158,6 +155,37 @@ func (as *ActionService) Delete(r *http.Request, args *DeleteArgs, reply *Delete
 	log.Println("spawning a handler")
 
 	log.Println("returning to the caller that the request has been accepted")
+	return nil
+}
+
+func (as *ActionService) Redeploy(r *http.Request, args *RedeployArgs, reply *RedeployReply) error {
+	err := validateRedeployReq(args)
+	if err != nil {
+		return err
+	}
+
+	log.Println("redeploy action called")
+
+	now := time.Now()
+	wa, _, err := as.log.CreateWorkloadAction(context.TODO(), walog.WorkloadActionCreate{
+		ActionType:      walog.WorkloadActionTypeEnumRedeploy,
+		ActionStatus:    walog.WorkloadActionStatusEnumPending,
+		ActionStartTime: now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	})
+	if err != nil {
+		log.Printf("error creating action log: %v\n", err)
+		return err
+	}
+
+	reply.Message = "ok"
+
+	err = as.RedeployHandler(wa.ID, args)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

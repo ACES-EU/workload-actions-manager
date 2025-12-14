@@ -26,12 +26,15 @@ import (
 type WorkloadActionTypeEnum string
 
 const (
-	WorkloadActionTypeEnumBind   WorkloadActionTypeEnum = "bind"
-	WorkloadActionTypeEnumCreate WorkloadActionTypeEnum = "create"
-	WorkloadActionTypeEnumDelete WorkloadActionTypeEnum = "delete"
-	WorkloadActionTypeEnumMove   WorkloadActionTypeEnum = "move"
-	WorkloadActionTypeEnumSwapX  WorkloadActionTypeEnum = "swap_x"
-	WorkloadActionTypeEnumSwapY  WorkloadActionTypeEnum = "swap_y"
+	WorkloadActionTypeEnumBind            WorkloadActionTypeEnum = "bind"
+	WorkloadActionTypeEnumCreate          WorkloadActionTypeEnum = "create"
+	WorkloadActionTypeEnumDelete          WorkloadActionTypeEnum = "delete"
+	WorkloadActionTypeEnumMove            WorkloadActionTypeEnum = "move"
+	WorkloadActionTypeEnumSwapX           WorkloadActionTypeEnum = "swap_x"
+	WorkloadActionTypeEnumSwapY           WorkloadActionTypeEnum = "swap_y"
+	WorkloadActionTypeEnumScale           WorkloadActionTypeEnum = "scale"
+	WorkloadActionTypeEnumUpdateResources WorkloadActionTypeEnum = "update_resources"
+	WorkloadActionTypeEnumRedeploy        WorkloadActionTypeEnum = "redeploy"
 )
 
 // WorkloadActionStatusEnum represents the status of a workload action.
@@ -65,7 +68,7 @@ type WorkloadAction struct {
 	ActionReason        *string                  `json:"action_reason"`
 	PodParentName       *string                  `json:"pod_parent_name"`
 	PodParentType       *PodParentTypeEnum       `json:"pod_parent_type"`
-	PodParentUID        *uuid.UUID               `json:"pod_parent_uid"`
+	PodParentUID        *string                  `json:"pod_parent_uid"`
 	CreatedPodName      *string                  `json:"created_pod_name"`
 	CreatedPodNamespace *string                  `json:"created_pod_namespace"`
 	CreatedNodeName     *string                  `json:"created_node_name"`
@@ -88,7 +91,7 @@ type WorkloadActionCreate struct {
 	ActionReason        *string                  `json:"action_reason,omitempty"`
 	PodParentName       *string                  `json:"pod_parent_name,omitempty"`
 	PodParentType       *PodParentTypeEnum       `json:"pod_parent_type,omitempty"`
-	PodParentUID        *uuid.UUID               `json:"pod_parent_uid,omitempty"`
+	PodParentUID        *string                  `json:"pod_parent_uid,omitempty"`
 	CreatedPodName      *string                  `json:"created_pod_name,omitempty"`
 	CreatedPodNamespace *string                  `json:"created_pod_namespace,omitempty"`
 	CreatedNodeName     *string                  `json:"created_node_name,omitempty"`
@@ -111,7 +114,7 @@ type WorkloadActionUpdate struct {
 	ActionReason        *string                   `json:"action_reason,omitempty"`
 	PodParentName       *string                   `json:"pod_parent_name,omitempty"`
 	PodParentType       *PodParentTypeEnum        `json:"pod_parent_type,omitempty"`
-	PodParentUID        *uuid.UUID                `json:"pod_parent_uid,omitempty"`
+	PodParentUID        *string                   `json:"pod_parent_uid,omitempty"`
 	CreatedPodName      *string                   `json:"created_pod_name,omitempty"`
 	CreatedPodNamespace *string                   `json:"created_pod_namespace,omitempty"`
 	CreatedNodeName     *string                   `json:"created_node_name,omitempty"`
@@ -499,4 +502,18 @@ func (c *WALogger) UpdateWorkloadDecisionStatus(ctx context.Context, body Worklo
 //
 //	fmt.Println("--- Pretty JSON Output ---")
 //	fmt.Println(string(prettyJSON4))
+//
+//	resp, err := c.UpdateWorkloadDecisionStatus(context.Background(), WorkloadDecisionStatusUpdate{
+//		PodName:        "test-a-5896f69ff-74zvj",
+//		Namespace:      "default",
+//		NodeName:       "k3d-aces-agent-7",
+//		ActionType:     WorkloadActionTypeEnumCreate,
+//		DecisionStatus: WorkloadActionStatusEnumSucceeded,
+//	})
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//
+//	fmt.Println(resp)
 //}
