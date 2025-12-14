@@ -40,6 +40,7 @@ below 50%.
 - [K3d](https://k3d.io/v5.2.2/#installation)
 - [Just](https://github.com/casey/just?tab=readme-ov-file#installation)
 - [Helm](https://helm.sh/docs/intro/install/)
+- [Go 1.24](https://go.dev/dl/)
 
 ## Create a Cluster
 
@@ -70,6 +71,7 @@ helm install --namespace ul test-b deploy/test-b
 helm install --namespace ul test-c deploy/test-c
 kubectl apply -f docs/pending-deployment.yaml
 kubectl apply -f docs/scheduled-deployment.yaml
+kubectl apply -f docs/other-resources.yaml
 kubectl port-forward svc/wam-app 3030:3030
 ```
 
@@ -147,7 +149,7 @@ curl -X POST -H "Content-Type: application/json" \
 # Similar as action.Delete, however it only terminates the pod without affecting the number of replicas.
 # Kubernetes controller will then create a new pod that can be scheduled again with action.Bind or by default scheduler.
 
-export pod_to_redeploy="test-c-0"
+export pod_to_redeploy="infinite-cronjob-29428390-xw4fh"
 curl -X POST -H "Content-Type: application/json" \
   -d "{\"method\":\"action.Redeploy\",\"params\":[{\"pod\": {\"namespace\": \"ul\", \"name\": \"$pod_to_redeploy\"}}], \"id\":\"1\"}" \
   http://localhost:3030/rpc

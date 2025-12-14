@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -215,6 +216,11 @@ func (as *ActionService) UpdateResourcesHandler(id uuid.UUID, args *UpdateResour
 	for range ticker.C {
 		d, err := as.k8sClient.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Printf("Deployment %s no longer exists. Stopping watch loop for logging.\n", deploymentName)
+				break
+			}
+
 			log.Printf("Error getting deployment: %v\n", err)
 			continue
 		}

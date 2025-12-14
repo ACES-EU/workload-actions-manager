@@ -65,9 +65,12 @@ func (as *ActionService) RedeployHandler(id uuid.UUID, args *RedeployArgs) error
 		status := walog.WorkloadActionStatusEnumFailed
 		logTime := time.Now()
 		_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
-			ActionStatus:  &status,
-			ActionEndTime: &logTime,
-			UpdatedAt:     &logTime,
+			ActionStatus:        &status,
+			ActionEndTime:       &logTime,
+			UpdatedAt:           &logTime,
+			DeletedNodeName:     &pod.Spec.NodeName,
+			DeletedPodName:      &pod.Name,
+			DeletedPodNamespace: &pod.Namespace,
 		})
 		if logErr != nil {
 			log.Printf("error updating action log: %v\n", logErr)
@@ -91,9 +94,12 @@ func (as *ActionService) RedeployHandler(id uuid.UUID, args *RedeployArgs) error
 	status := walog.WorkloadActionStatusEnumSucceeded
 	logTime := time.Now()
 	_, _, logErr := as.log.UpdateWorkloadAction(context.TODO(), id, walog.WorkloadActionUpdate{
-		ActionStatus:  &status,
-		ActionEndTime: &logTime,
-		UpdatedAt:     &logTime,
+		ActionStatus:        &status,
+		ActionEndTime:       &logTime,
+		UpdatedAt:           &logTime,
+		DeletedNodeName:     &pod.Spec.NodeName,
+		DeletedPodName:      &pod.Name,
+		DeletedPodNamespace: &pod.Namespace,
 	})
 	if logErr != nil {
 		log.Printf("error updating action log: %v\n", logErr)

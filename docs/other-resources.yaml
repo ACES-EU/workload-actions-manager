@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: infinite-job
+  namespace: ul
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          image: busybox
+          # "sleep infinity" prevents the container from exiting
+          command: ["sh", "-c", "echo 'Job started'; sleep infinity"]
+      restartPolicy: OnFailure
+  backoffLimit: 4
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: infinite-cronjob
+  namespace: ul
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: hello
+              image: busybox
+              command: ["sh", "-c", "echo 'CronJob pod active'; sleep infinity"]
+          restartPolicy: OnFailure
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: infinite-daemonset
+  namespace: ul
+spec:
+  selector:
+    matchLabels:
+      app: infinite-agent
+  template:
+    metadata:
+      labels:
+        app: infinite-agent
+    spec:
+      containers:
+        - name: agent
+          image: busybox
+          command: ["sh", "-c", "echo 'DaemonSet pod active'; sleep infinity"]
