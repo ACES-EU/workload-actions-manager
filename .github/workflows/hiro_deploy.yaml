@@ -26,7 +26,7 @@ jobs:
       - name: Set up kubeconfig
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets.HIRO_KUBE_CONFIG_BASTON }}" > ~/.kube/config
+          echo "${{ secrets.HIRO_KUBE_CONFIG_BASTON }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
           kubectl get namespace ul
 
